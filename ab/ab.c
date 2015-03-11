@@ -156,7 +156,7 @@
 #include "ap_config_auto.h"
 #endif
 
-#if defined(HAVE_OPENSSL)
+#if defined(HAVE_OPENSSL)   /* 支持SSL */
 
 #include <openssl/rsa.h>
 #include <openssl/crypto.h>
@@ -205,32 +205,32 @@ typedef STACK_OF(X509) X509_STACK_TYPE;
 #endif
 
 /* maximum number of requests on a time limited test */
-#define MAX_REQUESTS (INT_MAX > 50000 ? 50000 : INT_MAX)
+#define MAX_REQUESTS (INT_MAX > 50000 ? 50000 : INT_MAX)    /* 最大50000个请求*/
 
 /* connection state
  * don't add enums or rearrange or otherwise change values without
  * visiting set_conn_state()
  */
 typedef enum {
-    STATE_UNCONNECTED = 0,
+    STATE_UNCONNECTED = 0,      /*未连接*/
     STATE_CONNECTING,           /* TCP connect initiated, but we don't
                                  * know if it worked yet
                                  */
     STATE_CONNECTED,            /* we know TCP connect completed */
-    STATE_READ
+    STATE_READ                  /* 读状态*/
 } connect_state_e;
 
-#define CBUFFSIZE (8192)
+#define CBUFFSIZE (8192)        /* 8k */
 
-struct connection {
-    apr_pool_t *ctx;
-    apr_socket_t *aprsock;
-    apr_pollfd_t pollfd;
-    int state;
-    apr_size_t read;            /* amount of bytes read */
+struct connection {             /* connection 结构体 */
+    apr_pool_t *ctx;            /* pool上下文 */
+    apr_socket_t *aprsock;      /* 本连接对应sock*/
+    apr_pollfd_t pollfd;        /* poll fd 句柄 */
+    int state;                  /* connection 状态*/
+    apr_size_t read;            /* amount of bytes read 读字节 */
     apr_size_t bread;           /* amount of body read */
     apr_size_t rwrite, rwrote;  /* keep pointers in what we write - across
-                                 * EAGAINs */
+                                 * EAGAINs  记录写到哪里的指针*/
     apr_size_t length;          /* Content-Length value used for keep-alive */
     char cbuff[CBUFFSIZE];      /* a buffer to store server response header */
     int cbx;                    /* offset in cbuffer */
@@ -339,7 +339,7 @@ BIO *bio_out,*bio_err;
 
 apr_time_t start, lasttime, stoptime;
 
-/* global request (and its length) */
+/* global request (and its length) request请求*/
 char _request[8192];
 char *request = _request;
 apr_size_t reqlen;
@@ -350,14 +350,14 @@ char buffer[8192];
 /* interesting percentiles */
 int percs[] = {50, 66, 75, 80, 90, 95, 98, 99, 100};
 
-struct connection *con;     /* connection array */
-struct data *stats;         /* data for each request */
+struct connection *con;     /* connection array 连接数组*/
+struct data *stats;         /* data for each request 每个请求的状态数组*/
 apr_pool_t *cntxt;
 
 apr_pollset_t *readbits;
 
-apr_sockaddr_t *mysa;
-apr_sockaddr_t *destsa;
+apr_sockaddr_t *mysa;       /* 源地址 */
+apr_sockaddr_t *destsa;     /*目标地址*/
 
 #ifdef NOT_ASCII
 apr_xlate_t *from_ascii, *to_ascii;
@@ -392,6 +392,7 @@ static void apr_err(const char *s, apr_status_t rv)
     exit(rv);
 }
 
+/* malloc 的封装*/
 static void *xmalloc(size_t size)
 {
     void *ret = malloc(size);
@@ -414,6 +415,7 @@ static void *xcalloc(size_t num, size_t size)
     return ret;
 }
 
+/* strdup() 的封装 */
 static char *xstrdup(const char *s)
 {
     char *ret = strdup(s);
@@ -434,6 +436,7 @@ static int abort_on_oom(int retcode)
     return retcode;
 }
 
+/* 添加poll事件监听*/
 static void set_polled_events(struct connection *c, apr_int16_t new_reqevents)
 {
     apr_status_t rv;
@@ -458,9 +461,14 @@ static void set_polled_events(struct connection *c, apr_int16_t new_reqevents)
 
 static void set_conn_state(struct connection *c, connect_state_e new_state)
 {
+    /* 通过state的状态来索引对应的fd*/
+    /*  Posix 定义了两条与 select 和 非阻塞 connect 相关的规定：
+    1）连接成功建立时，socket 描述字变为可写。（连接建立时，写缓冲区空闲，所以可写）
+    2）连接建立失败时，socket 描述字既可读又可写。 （由于有未决的错误，从而可读又可写）
+    */
     apr_int16_t events_by_state[] = {
-        0,           /* for STATE_UNCONNECTED */
-        APR_POLLOUT, /* for STATE_CONNECTING */
+        0,           /* for STATE_UNCONNECTED 未连接，则不需要添加*/
+        APR_POLLOUT, /* for STATE_CONNECTING 可以OUT写表示连接状态返回*/
         APR_POLLIN,  /* for STATE_CONNECTED; we don't poll in this state,
                       * so prepare for polling in the following state --
                       * STATE_READ
@@ -699,31 +707,32 @@ static void ssl_proceed_handshake(struct connection *c)
 
 #endif /* USE_SSL */
 
+/* 写请求 */
 static void write_request(struct connection * c)
 {
-    if (started >= requests) {
+    if (started >= requests) {  /* 请求数已经完成 */
         return;
     }
 
     do {
         apr_time_t tnow;
-        apr_size_t l = c->rwrite;
+        apr_size_t l = c->rwrite;   /* 取得上一次这个connection写的位置 */
         apr_status_t e = APR_SUCCESS; /* prevent gcc warning */
 
-        tnow = lasttime = apr_time_now();
+        tnow = lasttime = apr_time_now();   /* 获取当前时间*/
 
         /*
          * First time round ?
          */
-        if (c->rwrite == 0) {
-            apr_socket_timeout_set(c->aprsock, 0);
-            c->connect = tnow;
-            c->rwrote = 0;
+        if (c->rwrite == 0) {   /* 第一次开始写， 因为rwrite计数为0 */
+            apr_socket_timeout_set(c->aprsock, 0);  /* 设置timeout ? */
+            c->connect = tnow;  /* 设置connect的时间戳 */
+            c->rwrote = 0;  /* 初始化已写的位置*/
             c->rwrite = reqlen;
-            if (send_body)
+            if (send_body)  /* 需要发送body，则加上post长度,rwrite表示需要发送的总长度，rwrote表示已经发送的长度*/
                 c->rwrite += postlen;
         }
-        else if (tnow > c->connect + aprtimeout) {
+        else if (tnow > c->connect + aprtimeout) {  /* 执行发送超时了, 则关闭连接，并返回*/
             printf("Send request timed out!\n");
             close_connection(c);
             return;
@@ -744,22 +753,26 @@ static void write_request(struct connection * c)
         }
         else
 #endif
+            /* 调用sock 发送 */
             e = apr_socket_send(c->aprsock, request + c->rwrote, &l);
 
+        /* 如果返回值不成功，且非EAGAIN，则连接出了问题*/
         if (e != APR_SUCCESS && !APR_STATUS_IS_EAGAIN(e)) {
             epipe++;
             printf("Send request failed!\n");
             close_connection(c);
             return;
         }
+
+        /* 成功，则计数更新*/
         totalposted += l;
         c->rwrote += l;
         c->rwrite -= l;
     } while (c->rwrite);
 
-    c->endwrite = lasttime = apr_time_now();
+    c->endwrite = lasttime = apr_time_now();    /* 设置endwrite时间，便于分开计算读，写，等待时间*/
     started++;
-    set_conn_state(c, STATE_READ);
+    set_conn_state(c, STATE_READ);  /* 增加读等待事件POLL_IN*/
 }
 
 /* --------------------------------------------------------- */
@@ -1216,7 +1229,7 @@ static void output_html_results(void)
 /* --------------------------------------------------------- */
 
 /* start asnchronous non-blocking connection */
-
+/* 建立连接过程 */
 static void start_connect(struct connection * c)
 {
     apr_status_t rv;
@@ -1235,11 +1248,13 @@ static void start_connect(struct connection * c)
     else
         apr_pool_create(&c->ctx, cntxt);
 
+    /* 建立socket */
     if ((rv = apr_socket_create(&c->aprsock, destsa->family,
                 SOCK_STREAM, 0, c->ctx)) != APR_SUCCESS) {
     apr_err("socket", rv);
     }
 
+    /* 绑定本地地址*/
     if (myhost) {
         if ((rv = apr_socket_bind(c->aprsock, mysa)) != APR_SUCCESS) {
             apr_err("bind", rv);
@@ -1251,11 +1266,13 @@ static void start_connect(struct connection * c)
     c->pollfd.reqevents = 0;
     c->pollfd.client_data = c;
 
+    /* 设置socket nonblocking*/
     if ((rv = apr_socket_opt_set(c->aprsock, APR_SO_NONBLOCK, 1))
          != APR_SUCCESS) {
         apr_err("socket nonblock", rv);
     }
 
+    /* 调整socket windowsize，否则用系统设置*/
     if (windowsize != 0) {
         rv = apr_socket_opt_set(c->aprsock, APR_SO_SNDBUF,
                                 windowsize);
@@ -1293,13 +1310,17 @@ static void start_connect(struct connection * c)
         c->ssl = NULL;
     }
 #endif
+    /* 连接 */
     if ((rv = apr_socket_connect(c->aprsock, destsa)) != APR_SUCCESS) {
+
+        /* 不成功，但是如果是正在inprogress，则需要增加异步监听connect成功事件,POLL_OUT */
         if (APR_STATUS_IS_EINPROGRESS(rv)) {
             set_conn_state(c, STATE_CONNECTING);
             c->rwrite = 0;
             return;
         }
         else {
+            /* 否则，就是真的不成功了,关闭socket*/
             set_conn_state(c, STATE_UNCONNECTED);
             apr_socket_close(c->aprsock);
             err_conn++;
@@ -1309,12 +1330,13 @@ static void start_connect(struct connection * c)
                 apr_err("apr_socket_connect()", rv);
             }
 
+            /* 递归调用 ？ 会不会有问题？ 太任性了*/
             start_connect(c);
             return;
         }
     }
 
-    /* connected first time */
+    /* connected first time 这里表示直接建立连接同步成功，直接设置对应监听事件*/
     set_conn_state(c, STATE_CONNECTED);
 #ifdef USE_SSL
     if (c->ssl) {
@@ -1322,6 +1344,7 @@ static void start_connect(struct connection * c)
     } else
 #endif
     {
+        /* 直接写请求去 */
         write_request(c);
     }
 }
@@ -1381,7 +1404,7 @@ static void close_connection(struct connection * c)
 /* --------------------------------------------------------- */
 
 /* read data from connection */
-
+/* 读请求数据 */
 static void read_connection(struct connection * c)
 {
     apr_size_t r;
@@ -1426,6 +1449,7 @@ static void read_connection(struct connection * c)
     else
 #endif
     {
+        /* 读 */
         status = apr_socket_recv(c->aprsock, buffer, &r);
         if (APR_STATUS_IS_EAGAIN(status))
             return;
