@@ -1,0 +1,216 @@
+#!/bin/sh
+##############################################################################
+##############################################################################
+##
+## SCCS ID: @(#)build	1.2 [03/07/27 22:20:31]
+##
+## FILE: build
+##
+## DESCRIPTION: This file contains a script to help in the building and
+##              installation of the overlay filesystem.
+##
+## SCCS ID: @(#) build 1.2
+##
+## NOTES:
+##	- It is most likely necessary to run this script as root in order to
+##	  be able to install the modules and documentation.
+##
+##
+## REVISION HISTORY:
+##
+## DATE		AUTHOR		DESCRIPTION
+## ==========	===============	==============================================
+## 03/11/1998	ARTHUR N.	Added to source code control.
+## 05/18/1998	ARTHUR N.	Added the configuration utility.
+##
+##############################################################################
+##############################################################################
+
+## CONSTANTS:
+
+DEF_ALL_LOG_FILE=All.log
+DEF_DOC_LOG_FILE=Doc.log
+DEF_INSTALL_LOG_FILE=Install.log
+DEF_INSTDOC_LOG_FILE=Instdoc.log
+
+DEF_DATE=/bin/date
+DEF_MAKE=/usr/bin/make
+DEF_PRINTF=/usr/bin/printf
+DEF_TEE=/usr/bin/tee
+
+DEF_PREFIX=""
+
+
+## VARIABLES:
+
+ALL_LOG_FILE=${ALL_LOG_FILE:-$DEF_ALL_LOG_FILE}
+DOC_LOG_FILE=${DOC_LOG_FILE:-$DEF_DOC_LOG_FILE}
+INSTALL_LOG_FILE=${INSTALL_LOG_FILE:-$DEF_INSTALL_LOG_FILE}
+INSTDOC_LOG_FILE=${INSTDOC_LOG_FILE:-$DEF_INSTDOC_LOG_FILE}
+
+DATE=${DATE:-$DEF_DATE}
+MAKE=${MAKE:-$DEF_MAKE}
+PRINTF=${PRINTF:-$DEF_PRINTF}
+TEE=${TEE:-$DEF_TEE}
+
+PREFIX=${PREFIX:-$DEF_PREFIX}
+
+
+
+##
+## FUNCTION: run_make
+##
+##  PURPOSE: Run the make command on the specified target and log the results
+##           in the specified log file.
+##
+
+run_make ()
+{
+	TARGET="$1"
+	LOGFILE="$2"
+
+	if [ -n "$PREFIX" ]
+	then
+		prefix_arg="prefix=$PREFIX"
+	else
+		prefix_arg=""
+	fi
+
+		# Only write to the log file if it was given
+
+	if [ -n "$LOGFILE" ]
+	then
+		date=`${DATE}`
+		echo "COMPILING $TARGET $prefix_arg $date" >>"$LOGFILE"
+
+		${MAKE} "$TARGET" $prefix_arg 2>&1 | ${TEE} -a "$LOGFILE"
+	else
+			# No log file - just compile
+
+		${MAKE} "$TARGET" $prefix_arg
+	fi
+}
+
+
+
+##
+## FUNCTION: check_prefix
+##
+##  PURPOSE: Determine if the user has specified a prefix variable for
+##           installation, and request it if not.
+##
+
+ASK_PREFIX=1
+
+check_prefix ()
+{
+	if [ -z "$PREFIX"  -a  "$ASK_PREFIX" -ne 0 ]
+	then
+		${PRINTF} "Please enter the prefix directory or press return: "
+
+		read PREFIX
+	fi
+
+		# Don't ask again
+
+	ASK_PREFIX=0
+}
+
+
+
+##
+## FUNCTION: get_yn
+##
+##  PURPOSE: Obtain a yes/no response from the user for the specified message.
+##
+
+get_yn ()
+{
+	PROMPT="$1"
+	DEFAULT=${2:-y}
+
+	response=""
+
+	while [ -z "$response" ]
+	do
+		${PRINTF} "%s [%s]? " "$PROMPT" "$DEFAULT"
+
+		read response
+
+		case "$response" in
+			y* | Y*)
+				response=y
+				;;
+
+			n* | N*)
+				response=n
+				;;
+
+			"")
+				response="$DEFAULT"
+				;;
+
+			*)
+				echo "Please enter 'y' or 'n'"
+				;;
+		esac
+	done
+
+	if [ "$response" = "y" ]
+	then
+		ret=0
+	else
+		ret=1
+	fi
+
+	return	$ret
+}
+
+
+
+##############################################################################
+##############################################################################
+##
+## MAIN BODY STARTS HERE
+##
+
+	# Configure the build
+
+if get_yn "Run the configuration utility" "y"
+then
+	./configure
+fi
+
+
+	# Build the modules
+
+if get_yn "Build the ovl.o and klist.o modules" "y"
+then
+	run_make all "$ALL_LOG_FILE"
+fi
+
+
+	# Build the documentation
+
+if get_yn "Build the documentation (requires m4)" "n"
+then
+	run_make doc "$DOC_LOG_FILE"
+fi
+
+
+	# Install the modules
+
+if get_yn "Install the ovl.o and klist.o modules" "y"
+then
+	check_prefix
+	run_make install "$INSTALL_LOG_FILE"
+fi
+
+
+	# Install the documentation
+
+if get_yn "Install the documentation" "y"
+then
+	check_prefix
+	run_make install_doc "$INSTDOC_LOG_FILE"
+fi

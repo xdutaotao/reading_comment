@@ -1,0 +1,35 @@
+This file contains a accumulation of ideas for maintaining the overlay file-
+system.  See the file TODO for a list of items that still require resolution.
+
+
+	1. A status file can be placed in the overlay filesystem, or in some
+	   other location, and this file could be used for the following:
+
+		- remember deleted inodes
+		- map psuedo-inode numbers to real ones
+		- track file name changes
+
+	2. Initial implementation strategy:
+
+		Step 1.  Get a loadable module with a working psuedo-
+		         filesystem.
+		         (completed Fri Aug 22 10:08:44 EDT 1997)
+
+		Step 2.  Add ability to obtain information on the overlayed
+		         filesystem to the psuedo-filesystem.
+
+		Step 3.  Add ability to save changes to the overlayed file-
+		         system in the overlay fs.  Plan B is to copy the
+		         entire file when modified; plan A is step 4.
+		         (completed Sun Aug 31 00:08:29 EDT 1997 - still needs
+		          testing)
+
+		Step 4.  Add ability to store partial updates.  This is Plan
+		         A.
+
+	3. Allow the mount point to be used as the base file system.  This
+	   could be done by looking at the super block structure's s_covered
+	   member.  The only problem is that the s_covered member is not
+	   defined until AFTER the read_super() operation completes
+	   successfully.
+

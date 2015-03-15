@@ -1,0 +1,19 @@
+DEVELOPER QUESTIONS:
+
+Q. Why maintain both the VFS' inodes for the pseudo fs in addition to the inode
+   information maintained in the store for the filesystem?
+
+A. A normal filesystem has its own device where it maintains inode information
+   "persistently".  The overlay filesystem does not make use of such a device
+   (at least not at this time).  Therefore, the inode information is maintained
+   in memory until the super block is written out.  So, why not just store the
+   VFS' inodes?  Because they belong to the VFS who decides when and where to
+   put those inodes, and it would not be a good idea to hold on to the VFS'
+   inodes the entire time the overlay filesystem is mounted.
+
+   Holding on to the VFS' inodes would cause the VFS to slow down every time it
+   needs to read through its inode cache to find an inode or to obtain an un-
+   used inode.  In addition, there may be changes to the way in which the VFS
+   maintains its inodes in the future, and it is desireable to keep this
+   filesystem's implementation independent of the VFS as much as possible so
+   that it may be used with those future implementations without problem.

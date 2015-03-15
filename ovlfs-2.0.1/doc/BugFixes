@@ -1,0 +1,58 @@
+  This file contains information on updates to the overlay filesystem source
+for bug fixes.
+
+Version 1.0.1:
+	- Storage File: fixed problem mounting the filesystem without a storage
+	  file specified.
+
+Version 1.0.2:
+	- Root Inode Storage: if the storage filesystem is not set, or not
+	  found, then the root inode's storage inode reference points to the
+	  base filesystem's root, allowing the base filesystem's root to be
+	  modified, but not allowing any subdirectories to be modified.
+
+	- Improvements: check to make sure the storage filesystem root is set,
+	  and the nostg option is not used, before creating files and return
+	  -ENOSPC otherwise.
+
+Version 1.0.3:
+	- Read/Write Files: if the overlay filesystem believes that a file is
+	  a different size than the real filesystem has, then no more than the
+	  overlay filesystem believes exists is read, and any extra believed by
+	  the overlay filesystem is returned as zero-filled result.  This can
+	  happen through the use of the truncate() system call.
+
+	- Copy File, No Space: if a file that resides in the base filesystem
+	  only is updated, and there was not enough space in the overlay file-
+	  system, the file would be removed from the overlay filesystem.  Now,
+	  the new file will be removed from the overlay filesystem, but the
+	  base file will still be accessible through the overlay filesystem.
+
+	- Copy File on write: if a file that resides in the base filesystem
+	  only is updated then the lseek() method for the newly created file is
+	  now called to reset the position of the file.  This did not show up
+	  as a real bug in testing, but the fix was added in case any file-
+	  system out there needs lseek() to be used to set the position in the
+	  file, or whose open() method sets the position back to 0.
+
+Version 1.0.4:
+	- Mount First Time: when mounting the ovlfs for the first time with
+	  a storage file, the root inode was not being found.  This was due
+	  to the fact that the storage file is created as empty and then
+	  no inodes are read from it.  Now, the root inode is checked for
+	  after attempting to read the file and added if it is not found.
+
+Version 1.0.5:
+	- Symbolic Links: corrected the follow_link() method so that it will
+	  obtain the inode in the ovlfs inode and work across filesystems.
+	  Previously, the inode in the real filesystem would be obtained, the
+	  wrong file could be obtained (due to renamings and/or removals),
+	  and symbolic links would not work between the storage filesystem and
+	  the base filesystem.
+
+Version 2.0.0:
+	* Not updated.
+	* Please see README and RELEASE_NOTES in the top-level directory.
+
+
+[version @(#) BugFixes 1.6]

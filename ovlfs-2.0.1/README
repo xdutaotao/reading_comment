@@ -1,0 +1,106 @@
+				README
+
+===========
+0. SECTIONS
+===========
+
+	1. LICENSE
+	2. COPYRIGHT
+	3. INSTALLATION
+	4. DOCUMENTATION
+	5. SUPPORT
+	6. OBTAINING
+	7. RELEASE NOTES
+
+
+==========
+1. LICENSE
+==========
+
+    This source is licensed under the GNU Public License 2.0.  See the
+file, COPYING, in this directory for more information.
+
+
+============
+2. COPYRIGHT
+============
+
+    All source code contained herein, except those indicated as being copies
+from the linux source tree, are copyrighted by myself, Arthur Naseef.  Note
+that this source is available to you ``as is'', and as such is provided without
+warranty of any kind.  As with any kernel source code, there is a chance for
+corruption and damage of the data on your system.
+
+
+
+===============
+3. INSTALLATION
+===============
+
+   Installation should be simple:
+
+		1. ./configure		(this likely can be safely skipped)
+		2. make
+		3. make install (as root)
+
+This procedure should build the overlay filesystem driver and the kernel
+lists driver.  The overlay filesystem requires the kernel lists in order to
+work.
+
+   Note that this source was written on a linux kernel 2.4.10 system, so there
+may be differences based on the version of the kernel you are working on.
+Don't let that discourage you from attempting to get it to work though!
+
+   Please look over the documentation included here for important information
+and warnings on the use of the overlay filesystem.
+
+
+================
+4. DOCUMENTATION
+================
+
+    The doc/ subdirectory contains most of the useful documentation not
+included in this file.  However, for developers, or those interested in
+building a module different from the default one, the Makefiles and source
+code contain comments that may be of use.
+
+
+==========
+5. SUPPORT
+==========
+
+    This software comes without support.  However, I do intend to improve upon
+this software and provide informal support, as time permits.  Therefore, if
+you find that you have trouble using, compiling, or installing the software,
+please feel free to contact me.  Likewise, if you believe that you have
+improvements or bug fixes, please contact me with them as well.  I will respond
+as time permits.  See the file Support in the doc subdirectory for more
+information.
+
+
+
+============
+6. OBTAINING
+============
+
+    This source may be obtained from the author at the following web site.
+However, over time, this may change.  See the file Support in the doc directory
+for more information.
+
+    As long as possible, the following web site will be used to make this
+source available.
+
+	http://ovlfs.sourceforge.net/
+
+
+
+================
+7. RELEASE NOTES
+================
+
+    Notes specific to this release of the Overlay Filesystem are contained in
+the file, RELEASE_NOTES.  Reading the release notes may answer questions you
+have and help you to prevent problems with this software.
+
+
+[version @(#) README 1.3]

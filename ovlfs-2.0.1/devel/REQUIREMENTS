@@ -1,0 +1,586 @@
+This files contains ...
+The information in this file was determined from the source code for the
+2.0.33 kernel.
+
+
+REQUIREMENTS FOR VFS FUNCTIONS/CALLBACKS:
+
+    INODE OPERATIONS:
+
+	truncate:	do NOT call iput() on the inode.
+	bmap:		return 0 on failure.
+
+
+    VFS OPERATIONS:
+	- In general, all names passed to functions, such as mkdir(), mknod(),
+	  and symlink() must not be referenced after the return from those
+	  functions.  Therefore, if a filesystem needs to keep the name in
+	  memory for any length of time, it must make its own copy of the name.
+
+	- All functions that return an inode pointer (through a struct inode **
+	  argument) must set the valid of the inode pointer iff successful.
+
+	- Most functions must return a value of 0 or >= 0 on success.  The
+	  easiest way to tell if >= 0 is valid is to look at the corresponding
+	  manual page for the operation.  On the other hand, unless the
+	  function is supposed to return a value other than 0 (e.g. read &
+	  write), it is best to simply have it return only 0 on success.
+
+	- Any functions, such as rmdir, that cause an inode to become un-
+	  usable MUST make sure to clear the inode so that is can not be
+	  pulled out of the cache and re-used.  The same is true for any
+	  operation on the inode that would require the inode to be re-read
+	  (through the super block's read_inode operation) before being used
+	  again.  This is due to the fact that the VFS keeps unused inodes in
+	  the hash tables until they need to be re-used; this behavior speeds
+	  up multiple accesses to the same inode within a short time frame,
+	  but cause the requirements mentioned here.
+
+	  This requirement is especially important for all filesystems that
+	  use the u.generic_ip pointer of the inode to point to allocated
+	  memory.  The put_inode operation must free that pointer since no
+	  other inode/super block operation is called when the inode is finally
+	  reused (except for the disk quota's drop operation).
+
+	  Note that one way to clear the inode is the call the clear_inode()
+	  function with the inode pointer, making sure that the inode is not
+	  dirty - or writing it first if it is dirty.
+
+    VFS SUPER BLOCK OPERATIONS:
+
+	read_super:
+		1. must read all necessary information for the super block from
+		   storage and setup the superblock for use.
+
+		2. must set sb->s_mounted to the inode of the root directory of
+		   the filesystem.
+
+		3. must return NULL if any error occurs that prevents the
+		   filesystem from being usable.
+
+	notify_change:
+		1. must set the attributes for the inode as specified in the
+                   ia_attrib structure given to it.
+
+		2. must make certain that the user has permission to make the
+		   requested changes; the function, inode_change_ok() can be
+		   used to verify user permission.
+
+    VFS INODE OPERATIONS:
+	bmap:
+		1. must NOT iput() the inode given.
+
+		2. must return 0 on error.
+
+	create:
+		1. must iput() the directory inode given.
+
+		2. must return the inode that was created on success.
+
+		3. must return a successful return code (0) iff the result
+		   is set.  The result inode returned must be marked for
+		   use, but this is not an issue if it is retrieved through
+		   the iget() (actually __iget()) function.
+
+		4. must return 0 on success.
+
+	follow_link:
+		1. must iput() the directory inode given.  Must NOT iput() the
+		   symbolic link's inode given.
+
+		2. must return a successful return code (0) iff the result
+		   is set.  The result inode returned must be marked for
+		   use, but this is not an issue if it is retrieved through
+		   the iget() (actually __iget()) function.
+
+		3. must only return 0 on success.
+
+	link:
+		1. must iput() both inodes given, the original file's inode and
+		   the directory's inode.
+
+	lookup:
+		1. must call iput() on the given inode.
+
+		2. must return a successful return code (0) iff the result
+		   is set.  The result inode returned must be marked for
+		   use, but this is not an issue if it is retrieved through
+		   the iget() (actually __iget()) function.
+
+		3. should return the root of the filesystem when ".." is
+		   accessed from the root directory, unless you specifically
+		   do not want this.
+
+		4. does NOT need to handle mount points.
+
+		5. must only return 0 on success.
+
+	mkdir:
+		1. must iput() the directory inode given.
+
+	mknod:
+		1. must iput() the directory inode given.
+
+	permission:
+		1. must NOT iput() the inode given.
+
+		2. must return 0 if permission is granted.
+
+		3. must return any value other than 0 if permission is denied.
+
+	readdir:
+		1. must NOT iput() the given inode.
+
+		2. must be able to be re-entered with different file offsets
+		   and keep the directory contents clear between calls.
+
+		3. should continue to pass back as many directory entries
+		   as the callback will accept.
+
+		4. must only return with the file position unchanged when
+		   the last directory entry has been returned.
+
+	readlink:
+		1. must iput() the symbolic link inode given.
+
+	readpage:
+		1. must NOT iput() the given inode.
+
+	rename:
+		1. must iput() both directory inodes given.
+
+	rmdir:
+		1. must iput() the directory inode given.
+
+		2. must return 0 on success.
+
+	symlink:
+		1. must iput() the directory inode given.
+		2. must make its own copy of the given names, as needed;
+		   neither name given will be valid after returning.
+
+	truncate:
+		1. must NOT iput() the inode given.
+
+		2. on increasing the size of a file, does NOT have to pre-
+		   allocate that space, as long as the filesystem can support
+		   sparse files.
+
+	unlink:
+		1. must iput() the directory inode given.
+
+
+    OVLFS STORAGE OPERATIONS
+
+	[SUPER BLOCK, or FS ADMIN, OPERATIONS]
+
+	init:
+		1. must prepare to serve and add inodes to the filesystem. This
+		   usually includes:
+
+			a. retrieve information from physical storage and
+			   update the super block information for the storage
+			   method.  This includes verifying that the physical
+			   storage is valid for the filesystem.
+
+			b. setup internal data structures as needed.  Memory
+			   may be allocated, as needed; any allocated memory
+			   will need to be explicitly released later, so make
+			   sure it can be found.
+
+		2. must ensure that the root directory for the filesystem
+		   exists.  It may create the root directory for the filesystem
+		   if one does not exist, as desired.
+
+		   Note that it may be desirable in many cases, especially
+		   for those storage methods that work with existing physical
+		   storage, to require the use of another program to prepare
+		   (i.e. format) that phsyical storage.  This way, attempting
+		   to mount the wrong device will not destroy the information
+		   already on it.  This is up to the implementor of the storage
+		   method.
+
+		3. must NOT change the super block's u structure's immediate
+		   elements.  The u.generc_sbp pointer is initialized by the
+		   ovlfs before this operation is performed.  The storage
+		   method should really try to work only with its own area
+		   within the super block's ovlfs information structure, as
+		   described next.
+
+		4. must prepare the information in the super block's
+		   information structure's u element as it needs.  Here is one
+		   way to access that element, where sb is the pointer to the
+		   super block structure:
+
+			ovlfs_super_info_t *s_info;
+
+			s_info = (ovlfs_super_info_t *) sb->u.generic_sbp;
+
+			/* now access s_info->u */
+
+		5. must return an error if the filesystem can not be mounted
+		   properly for any reason.  MUST release any resources this
+		   operation allocates and undo any work it performs when an
+		   error occurs.  In other words, it must cleanup itself on
+		   failure.  The Release operation will NOT be called if this
+		   operation returns an error.
+
+		6. must return >= 0 on success.  Zero is recommended.  Must
+		   return < 0 on failure; the return code is otherwise unused.
+
+	sync:
+		1. must update the physical storage for the filesystem. This
+		   usually means writing the super block itself and perhaps a
+		   few other pieces of information.
+
+		2. any physical storage information that would not be updated
+		   by the update inode operation, or any other operation, must
+		   be written by this operation.
+
+		3. does NOT have to update dirty inodes.
+
+		4. does NOT have to force the physical layer to update.
+
+		5. should return >= 0 on success; 0 is recommended.  Should
+		   return < 0 if an error occurs.  However, at the time of
+		   this writing, the return code is ignored.  It may always
+		   be ignored since it does not seem there is much the caller
+		   can do, at least from the point of view that the sync
+		   operation could attempt the same things...
+
+		NOTE: the File Storage method only writes to its storage file
+		      by writting the entire file.  Therefore, this operation,
+		      as written for the File Storage Method, actually writes
+		      all of the inode information as well.
+
+	release:
+		1. must free the memory used by the storage.  No other
+		   operations for this filesystem will be called after this
+		   one is called until the Init() operation is called again.
+		   So, don't leave anything behind ;-).
+
+		2. must never free the super block's information structure
+		   iself.  It should only release the storage method's members
+		   of the ovlfs super block information structure's u element,
+		   iff they were allocated by the storage method.
+
+		3. should return >= 0 on success; 0 is recommended.  Should
+		   return < 0 if an error occurs.  However, at the time of
+		   this writing, the return code is ignored.  It probably will
+		   always be ignored.
+
+	statfs:
+		1. does NOT need to copy data between kernel space and user
+		   space (memcptofs, or the like).
+
+		2. should set the members of the given statfs structure to
+		   indicate the amount of free and used space and inodes.
+
+		3. should return >= 0 on success; 0 is recommended.  Should
+		   return < 0 if an error occurs.  However, at the time of
+		   this writing, the return code is ignored.  It probably will
+		   always be ignored.
+
+
+	[INODE OPERATIONS]
+
+	add inode:
+		1. must allocate physical storage for a new inode and allocate
+		   a unique inode number (within the filesystem) for it.
+
+		2. must set the inode's attributes in physical storage to
+		   match, or at least based on, the attributes of the reference
+		   inode given.
+
+		3. must return an inode from the inode pool.  The easiest way
+		   to do this is to "iget(sb, inum)" the inode after it has
+		   been added to the storage.  Note that this inode MUST have
+		   the ovlfs inode information prepared (i.e. the
+		   inode->u.generic_ip pointer must not be null, and must be
+		   allocated).  The iget() function will call the
+		   ovlfs_read_inode() function which will do this
+		   automatically.
+
+		4. must set the inode pointer given to point to a VFS inode
+		   on success.  Can set the pointer to NULL otherwise, but
+		   this is not necessary.
+
+		5. must make certain that the inode returned is marked for
+		   use (IMARK).  This is handled automatically by iget().
+		   Note that it is important that this mark is only performed
+		   once since it is a counter of the number of accessors.  If
+		   it is marked more than once, the inode will never get put.
+
+		6. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOSPC).
+
+	read inode:
+		1. must indicate validity of inode from storage by setting
+		   return flag.  If it is not valid, then none of the inode's
+		   attibutes (i_mode, i_blksize, etc.) should be, nor need to,
+		   be updated.
+
+		2. must prepare to allow the given inode to be used to access
+		   the directory or file it refers to.  This usually involves
+		   updating the storage method's information in the ovlfs'
+		   inode information structure for reference.
+
+		3. must set the inode's attributes, such as owner and mode,
+		   unless the "valid" indication is false.
+
+		4. must NOT change the inode's number or device. NEVER NEVER
+		   NEVER.
+
+		5. must set the inode's reference name, if defined.  The
+		   reference name is stored in the ovlfs inode information
+		   structure's s element (s.name and s.len).  If set, the
+		   s.name MUST point to allocated (kmalloc'ed) memory.  The
+		   reference name is the name that is used to create copies
+		   of regular files into the "Storage Filesystem" from the
+		   "Base Filesystem".
+
+		6. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOENT).
+		   Note that reading an "invalid" inode is consider success.
+
+	clear inode:
+		1. must release any resources used by the storage method for
+		   the inode that are not released by the Release() or other
+		   operation.  Note that no other storage operation will be
+		   performed on the inode until it is read again with the
+		   Read_inode() operation.
+
+		2. can release the physical storage for the inode AS
+		   APPROPRIATE.  This operation is called for every inode just
+		   before it is removed from the inode cache, not only inodes
+		   that have a link count of zero.
+
+		3. must remove all mappings for the inode IF AND ONLY IF the
+		   inode is removed from physical storage.
+
+		4. should return >= 0 on success; 0 is recommended.  Should
+		   return < 0 if an error occurs.  However, at the time of
+		   this writing, the return code is ignored.  It probably will
+		   always be ignored.
+
+	update inode:
+		1. must save the attributes of the inode to physical storage.
+		   If the storage method caches data for writing, then the
+		   data in the cache should be written to disk.
+
+		2. must NOT "unprepare" the inode.  This inode may continue to
+		   be used normally until the clear inode operation is
+		   performed.
+
+		3. should not update the dirty attribute of the inode; that is
+		   handled by the ovlfs.
+
+		4. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOENT).
+
+
+	[INODE MAPPING OPERATIONS]
+
+	map inode:
+		1. must remember the mapping from the given inode from the
+		   base or storage filesystem to the ovlfs inode given.  Also,
+		   must remember whether the mapping is for the base or
+		   storage filesystem.  Note that a complete mapping includes
+		   a source device number and inode number as well as the
+		   target (ovlfs) inode number, and nothing else.
+
+		2. must make certain that this mapping will be remembered for
+		   later mounts.  The best way to handle this is to use an
+		   element in the ovlfs super block information structure's
+		   u element to track the mappings.  Then, the mappings can
+		   be stored when the super block is updated.
+
+		3. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOENT).
+
+	map lookup:
+		1. must find the ovlfs inode that matches the device number and
+		   inode number of the given reference inode from the specified
+		   filesystem (base or storage).
+
+		2. must set the inode pointer, whose address is given, to
+		   point to a VFS inode for the ovlfs inode found.  The VFS
+		   inode must be marked (as described for the Add Inode
+		   operation).  The easiest and best way to accomplish this is
+		   to use iget().  Of course, this is only on success.
+
+		3. must return an error ( < 0 ) if the inode pointer is not
+		   updated.
+
+		4. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOENT).
+
+
+	[DIRECTORY CONTENT OPERATIONS]
+
+	number entry:
+		1. must return the number of directory entries in the directory
+		   whose inode is given.
+
+		2. must include or exclude the number of removed directory
+		   entries in the directory, as requested.
+
+		3. must return a value of less than 0 if, and only if, an
+		   error occurs.  The value is interpreted as -1 * errno.
+
+	read directory:
+		1. must return unlinked directory entries with the directory
+		   entry flag, OVLFS_DIRENT_UNLINKED, set.  The flag is set
+		   in the flags element of the directory structure whose
+		   pointer must be returned.
+
+		2. must only return a NULL directory entry pointer as the
+		   last entry in the directory; therefore, it is generally
+		   easier to just return unlinked directory entries as
+		   indicated in (1) above than to skip them.
+
+		   In other words, all directory entries must be numbered
+		   sequentially so that no positions from 1 through n are
+		   missing, and each position remains the same between
+		   calls (except for actual changes to the directory, of
+		   course).
+
+		3. must return the pointer to a structure of type
+		   ovlfs_dir_info_t by storing it in the pointer given, but
+		   only if successful.  It may set the pointer to NULL on
+		   error, although this is not required.
+
+		4. the ovlfs will NOT release the memory used by the returned
+		   structure or any of its elements.  Therefore, it is
+		   important that this operation make certain that the pointer
+		   returned will be valid until the inode is no longer in
+		   use or it can be certain, through some other method, that
+		   the ovlfs is done with it.  The inode is no longer in use
+		   when the Clear Inode operation is called.
+
+		5. must return the directory entries in the same order and
+		   positions at least until the directory is modified by an
+		   addition or removal of an entry.
+
+		6. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOENT).
+
+	lookup:
+		1. must return the inode, for the entry whose name matches the
+		   one given, by setting the pointer whose address is given.
+		   This inode must be marked for use (see the Add Inode
+		   operation's description).  Of course, this is if and only
+		   if the operation is successful.
+
+		   The easiest way to accomplish this is to use iget().
+
+		2. must not modify the name given.
+
+		3. must NEVER return deleted entries.
+
+		4. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOENT).
+
+	add entry:
+		1. must add the entry, whose name and inode number are given,
+		   to the given directory so that it may be found later by the
+		   lookup operation.
+
+		2. must make certain that the entry is not marked as deleted,
+		   and that it replaces any deleted entry with the same name.
+
+		3. does not need to make any effort to find, validate, or
+		   otherwise modify the inode that the entry refers to.
+
+		4. must not modify the name given.
+
+		5. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOENT).
+
+
+	rename entry:
+		1. must change the name of the existing entry to the new name
+		   specified.  This may be accomplished by deleting the old
+		   entry and adding the new one, if that is appropriate; just
+		   don't forget to find the inode number first.
+
+		2. does not need to check the old name and new name to make
+		   sure they are different.
+
+		3. must track the old name as an unlinked directory entry.
+
+		4. must replace any unlinked entry whose name matches the new
+		   name with the entry.  The resulting entry must remain marked
+		   the same way the original was (which - should - always be
+		   "normal", but don't count on it).
+
+		5. must not modify either of the names given.  Also, must NOT
+		   reference the buffers given for the names; they will be
+		   lost or modified later.  Of course, must not free either
+		   buffer.
+
+		6. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOENT).
+
+	unlink entry:
+		1. must mark the entry, whose name is specified, as removed.
+
+		2. must not modify the name given.
+
+		3. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOENT).
+
+
+	[FILE CONTENT OPERATIONS] note: not yet used
+
+	read file:
+		TO BE DETERMINED
+
+	write file:
+		TO BE DETERMINED
+
+
+	[SYMBOLIC LINK OPERATIONS] note: not yet used
+
+	set symbolic link:
+		TO BE DETERMINED
+
+	read symbolic link:
+		TO BE DETERMINED
+
+
+IDEAS:
+	1. could add an operation to "release" a directory entry structure
+	   after the ovlfs is done with it.  This way, the storage method
+	   would know exactly when the entry is done being used, which could
+	   be very important for LARGE directories.
+
+	2. allow the storage method to either supply operations or flags that
+	   tell the ovlfs whether to/how to use the storage operations to
+	   read and write non-regular files.
+
+
+TODO:
+	1. correct the ovlfs_stg1_rename() method so that the new entry has
+	   the same directory flags as the original in all cases.  It is not
+	   correct when entries exist with both names.
+
+	2. detemine what will break if the ovlfs interacts directly with the
+	   real filesystems without going through the VFS.  For example, will
+	   named pipe files be able to work?
+
+	3. make certain that the Release() operation is called every it needs
+	   to be after the Init() operation is successful.
+
+
+[version @(#) REQUIREMENTS 1.3]

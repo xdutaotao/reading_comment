@@ -1,0 +1,58 @@
+				Overlay Filesystem
+				==================
+
+   Welcome to the overlay filesystem.  This file contains references to all of
+the information provided with the overlay filesystem and provides a brief
+description of the filesystem.
+
+   See the file, Description, for a more detailed description of the filesystem
+and issues of concern as a user.
+
+
+!!! WARNING !!!
+
+   There are some important things to know about the overlay filesystem before
+using it.  The author attempted to make this code as solid as possible, but
+due to the method of implementation, there are a few flaws that do not make
+the filesystem unusable, but need to be strongly considered before using it.
+
+   These issues are documented in the Description file, but some are mentioned
+here as well for easy reference.
+
+	- All of the storage of inode information for the overlay filesystem is
+	  maintained in kernel memory.  This means that large filesystems may
+	  use up a good portion of available kernel memory which slows down the
+	  entire system.
+
+	- The contents of directory and regular files are handled by the
+	  overlay filesystem; the contents of other types of files in the Base
+	  Filesystem may be accessed directly through the use of the overlay
+	  filesystem.  For these files, such as device nodes and named pipes,
+	  the file operations are simple pass-through operations.
+
+	  In spite of this, any changes to the inode attributes of these files
+	  is still maintained by the overlay filesystem.
+
+	- If the base or storage filesystems are changed directly (i.e. not
+	  through the use of the overlay filesystem), then the overlay
+	  filesystem may generate strange error messages, such as files not
+	  existing even though they show up in the directory listing.  For the
+	  most part, remounting the filsystem should clear most problems.
+
+DOCUMENTS
+
+   The following files are included in the source distribution.  Note that at
+this time, many, if not all, of them need work.
+
+	Author		- Short description of the Author.
+	Description	- Detailed description.
+	Options		- Description of the mount options.
+	Readme		- This file.
+	Support		- Description of support (or lack thereof).
+	Troubleshooting	- Troubleshooting information.
+	Version		- Version of the source tree's distribution.
+	ovl.8		- Compiled manual page.
+	ovl.m		- Source for the manual page.
+	tmac.asn	- Nroff/troff general-purpose macros.
+
+[version @(#) Readme 1.2]

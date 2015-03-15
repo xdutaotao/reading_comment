@@ -1,0 +1,16 @@
+#define t_base_root 257
+#define t_devfile 258
+#define t_end 259
+#define t_fs 260
+#define t_mnt_pt 261
+#define t_options 262
+#define t_space 263
+#define t_stg_file 264
+#define t_stg_method 265
+#define t_stg_root 266
+#define t_cd 267
+#define t_command 268
+#define t_key 269
+#define t_special 270
+#define t_selector 271
+#define v_string 272

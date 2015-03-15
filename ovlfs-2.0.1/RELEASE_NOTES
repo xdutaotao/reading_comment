@@ -1,0 +1,160 @@
+                               ==================
+                               OVERLAY FILESYSTEM
+                                 RELEASE NOTES
+                                 VERSION 2.0.0
+                               ==================
+
+
+1. ROBUSTNESS
+=============
+
+    Due to the amount of time passed since the initially planned release of
+the 2.0.0 version, the following has been affected:
+
+	A. Some of the documentation is not up-to-date.
+
+	B. New files and code have been added with no real impact on the
+	   software.
+
+	C. Testing with the latest version of the 2.4 kernel has not been
+	   completed.
+
+	D. New features are not documented.
+
+	E. Old warnings and issues may not be applicable.
+
+    In spite of these, this software is working and stable enough for release.
+I hope you will find this to be the case.
+
+    Note that support for the ReiserFS as the base or storage filesystem is
+not complete; multiple hard links to files, and renamed files in the base or
+storage filesystem may not be properly resolved by the Overlay Filesystem.
+Otherwise, ReiserFS support is functional.
+
+
+
+2. KERNEL VERSIONS
+==================
+
+    This version of the Overlay Filesystem is built on, and supports, 2.4
+series kernels.  Please note that a limited set of 2.4 kernels have actually
+been used, so there may be incompatibilities with others due to changes in the
+VFS or other portions of the Linux kernel.
+
+    While support for 2.2 kernels was considered, it is not complete; the 2.2
+and 2.4 kernels are very similar, but 2.2 lacks many useful interfaces on which
+the Overlay Filesystem relies.  Therefore, 2.2 support is currently incomplete.
+
+    Support for 2.0 kernels was present in the 1.0 series for the Overlay
+Filesystem, but that support has been lost in the migration to 2.4; in
+addition, the 1.0 ovlfs versions had serious flaws that have been corrected.
+
+
+
+3. BUG FIXES
+============
+
+    Since 2.0.0 is a major rewrite from version 1, listing bug fixes is not
+effective.  However, there were serious flaws in version 1 that have been
+corrected.  These are listed here:
+
+	A. Directory hierarchy creation used a recursive method that could
+	   easily overflow the kernel stack.
+
+	B. Large stack variables were allocated by the ovlfs, which could
+	   easily overflow the kernel stack.  All such variables have been
+	   replaced with heap memory.
+
+	C. A storage filesystem root that could be reached under the base
+	   filesystem root was not supported, and such an instance lead to
+	   certain, serious problems in the kernel.  This is no longer true.
+
+
+
+4. IMPROVEMENTS
+===============
+
+    Many improvements have been made to the Overlay Filesystem.  The majority
+support future development efforts and improve the stability and operation of
+the filesystem.
+
+    The most notable improvement is the Storage System support which allows
+alternative methods of storing Overlay Filesystem data to be added to the core
+without changing the core.  Support for storing the filesystem's data on block
+devices and in a block-formatted file are planned, which will have a great
+impact on the filesystem's required memory use.
+
+    Another notable improvement is the ovlmount program included in this
+release.  It simplifies the management of multiple Overlay Filesystem mounts
+by using an fstab-like file specifically designed for the Overlay Filesystem.
+
+
+
+5. SMP SUPPORT
+==============
+
+    At this time, SMP support is not tested, and is expected NOT to work.
+The effort needed to find and resolve SMP issues has not been made yet.
+
+
+
+6. DEVELOPER'S NOTE
+===================
+
+    Much remains to be cleaned up for "correct" kernel coding.  This holds
+especially true in the case of module versions.  The current plan for multiple
+kernel version support involves splitting the core into different directories,
+with one for each major implementation based on the kernel version.  With this
+model, the existing code can be greatly reduced in size and readability.
+
+    Any help in this matter is greatly appreciated.
+
+
+
+7. LIVE CD CREATED
+==================
+
+    With this version of the Overlay Filesystem, I have successfully created a
+"live", bootable CD using the Overlay Filesystem as the root filesystem.  Note
+that the real root is replaced after kernel startup using a small application
+that I wrote.
+
+    The CD boots directly to a SuSE 7.3 system with web browser and all types
+of wonderful features.  If you would like to know more, please write!
+
+    One of the great benefits of the live CD is the thorough testing it gives
+the Overlay Filesystem!
+
+
+
+8. LEX AND YACC
+===============
+
+    The mount directory uses lex and yacc (or flex and bison) to generate a
+parser for the ovlfstab file.  Output from these programs is included in the
+release by default, and will not be removed by "make clean", so that lex and
+yacc should not be required on your system.  Note, though, that the flex
+library is needed.
+
+    If you prefer to rebuild the lex and yacc output, please note that the
+makefiles expect programs named lex and yacc by default.
+
+
+
+9. THANKS
+=========
+
+    Many thanks goes out to the User Mode Linux project hosted on Sourceforge
+at the following URL:
+
+	http://user-mode-linux.sourceforge.net/
+
+Debugging the Overlay Filesystem has been made significantly easier, and
+corruption resulting from bugs was limited to a "safe area" (i.e. the content
+of a single file).
+
+    Keep up the good work!
+
+
+
+[version @(#) RELEASE_NOTES 1.3]

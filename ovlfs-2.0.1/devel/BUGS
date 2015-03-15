@@ -1,0 +1,115 @@
+1. rmdir() allows a non-empty directory to be removed.
+
+   PARTIAL REPAIR: Sun Mar  1 21:42:34 EST 1998
+
+   A non-empty directory which has a matching non-empty inode in the storage
+   filesystem will fail to be removed.  In order to fix this problem for
+   directories with entries in the base filesystem or pseudo filesystem only,
+   the directory entries listed for the directory must be searched to see if
+   any are not marked as deleted.
+
+
+2. rmdir() leaves the directory inode marked as linked (nlink is not updated).
+
+   Actually, this is a problem with the manner in which nlink is determined
+   when the inode is read.  The total number of directory entries is counted,
+   even if the entries are marked as deleted.
+
+
+3. rmdir() appears to cause an access to the stg dir after it has been
+   unlinked, causing ext2's ops to complain.
+
+   REPAIRED: Sun Mar  1 21:39:50 EST 1998
+
+   The problem appears to be that the inode remains in the VFS cache after
+   ext2 has marked it as unlinked and cleared the block and inode in its
+   storage.  This caused the ovlfs_rmdir() to obtain the incomplete inode's
+   reference upon calling lookup() for the removed directory.  When the
+   incomplete inode was iput(), no real error or problem was introduced, but
+   ext2 noticed that the removed directory was attempting to be removed again.
+
+4. the lookup() of the magic directory of a mount point is finding the inode
+   of the mount point directory (i.e. the directory that is covered by the
+   mount), but using the device of the mounted filesystem.
+
+   REPAIRED: Tue Mar  3 21:16:01 EST 1998
+
+   Use the __iget() method to obtain the inode instead of performing a lookup.
+
+5. removed directory entries do not stay removed after a unmounting the ovl
+   filesystem.  It is necessary to write the directory entry's status into
+   the storage file.
+
+6. updates to a file that is mmap'ed with MAP_FILE and MAP_SHARED do not appear
+   to get saved into the overlay filesystem as a normal write() would.
+   Strangely, on a CD-ROM filesystem, the update appears to hang on (probably
+   only as long as the buffer is in the buffer cache).
+
+7. rename() of a file to itself causes the overlay filesystem to fail.
+
+8. the lookup operation of the old directory inode in the ovlfs_rename()
+   function is called after checking the wrong inode's lookup operation.
+
+9. the set_root_inode_attr() function incorrectly sets the storage inode's
+   reference to the base filesystem's inode!  Of course, this should never
+   happen since the root inode will generally always have a storage fs.
+
+   FIX THIS IMMEDIATELY AND PLACE A BULLITEN ON THE WEB SITE.
+
+   Wed Mar 18 22:46:30 EST 1998: fixed yesterday
+
+10. read_into_dir_cb() checks the directory entry returned from the
+    ovlfs_ino_find_dirent() for NULL and if the entry's inum is 0.  Make sure
+    this is correct; it should probably be looking for OVLFS_DIRENT_UNLINKED.
+    The check for 0 is an extra sanity check that should not be needed.
+
+    VERIFIED Sun Mar 22 18:43:12 EST 1998
+
+11. read_into_dir_cb(): make sure it is correct not to set the name if the
+    inode is found in storage.  Actually, this is not right, and the code is.
+    The inode's name is set by the ovlfs_add_inode() method.
+
+    VERIFIED Sun Mar 22 18:43:12 EST 1998
+
+12. ovlfs_copy_file(): the file is removed from the pseudo filesystem if the
+    copy fails.  The file should only be removed from the storage filesystem!
+    In addition, no error is returned!
+
+    CORRECTED in V1.0.3 Fri Mar 27 13:42:03 EST 1998
+
+13. ovlfs_read(): the maximum size of a file needs to be checked in case the
+    file was truncated but only resides in the base filesystem.
+
+    PARTIAL in V1.0.3 Fri Mar 27 13:42:42 EST 1998; still need to fix the case
+    that a file is shortened and then lengthened - the original file's contents
+    should not become available again.
+
+14. ovlfs_make_hierarchy(): the attributes of each directory created takes the
+    attributes of the parent directory instead of the attributes of the base fs
+    directory (except for the ownership).  This is not correct; the attributes
+    should be taken strictly from the base filesystem.
+
+15. ovlfs_wait_on_inode(): if the process is interrupted with a blocking
+    signal, and the inode is not locked at the time, the process may access the
+    inode even though it may be in the process of being locked.
+
+16. ovlfs_open(): sets tmp.file.f_op to NULL then later tests
+    tmp.file.f_op->release without checking tmp.file.f_op!
+
+17. ovlfs_add_dirent_op() does not IPUT() an inode if it is called with a
+    null directory operation callback.
+
+18. some inode operations may return > 0 on success while the manual page for
+    those functions indicates that 0 will be returned!
+
+19. SYMBOLIC LINK BUG: a symbolic link to a file returns the original file's
+    inode when the symbolic link is referenced.  This means that a symbolic
+    link can be used to update a file in the base filesystem.  It also means
+    that symbolic links created in the ovlfs to point to base fs inodes do NOT
+    work!
+
+20. LINK COUNT BUG: if a file has two symbolic links in the base filesystem,
+    and one of the links has the name of a file with two links in the storage
+    filesystem, then the link count will be incorrect for the file unless the
+    second link in the storage filesystem has the same name and directory as
+    the second link in the base filesystem.

@@ -1,0 +1,85 @@
+The storage for the overlay filesystem needs to maintain information on
+inodes and the contents of their files.
+
+The following operations are needed from storage by the filesystem driver:
+
+	INODE MAINTAINENCE:
+
+		1. add a new inode
+
+		2. clear an inode (this may or may not free it - up to storage)
+
+		3. update inode
+
+
+	DIRECTORY CONTENT MAINTAINENCE:
+
+		3. read entries from a directory listing
+
+		4. add entries to a directory listing
+
+		5. remove entries from a directory listing
+
+
+	FILE CONTENT MAINTAINENCE:
+
+		(none currently supported)
+
+		6. read from file
+
+		7. write to file
+
+
+	SYMBOLIC LINK CONTENT MAINTAINENCE:
+
+		(none currently supported)
+
+		8. set the name of the symbolic link
+
+		9. read the name of the symbolic link
+
+-------------------------------------------------------------------------------
+In order to perform these operations, the storage must be able to perform
+the following operations in a disk file (or on a block device):
+
+	1. allocate space (blocks)
+
+	2. release space (blocks)
+
+	3. read/write a "block".  Note that for non-block files, a block may
+	   not be a real physical entity, but just a logical structure instead.
+
+	4. link one block with another (chaining)
+
+NOTES:
+	- blocks need to be reusable structures so that freed structures may
+	  be re-used.
+
+-------------------------------------------------------------------------------
+The structures stored on disk include:
+
+	1. Inode information structures - just the attributes
+
+	2. Inode content - either a list of blocks or the first block used by
+	   the inode.
+
+	3. Directory contents - list of names and inode numbers.
+
+	4. File contents - just as given for the file.  
+
+	5. Symbolic Link - the name of the link.
+
+IDEAS:
+	- can implement the filesystem such that updates are maintained in
+	  its storage as well as in the storage filesystem, using whichever
+	  is available.
+
+NOTES:
+	- The overlay filesystem is a VFS on drugs.  Maybe the easiest way
+	  to add real storage to the overlay filesystem is to use an existing
+	  filesystem driver.  This would be the most efficient and the least
+	  amount of work for me :).
+
+	  The only problem with this idea is that the overlay filesystem must
+	  track deleted files and changes to inodes that may invalidate the
+	  information maintained by the real filesystem.

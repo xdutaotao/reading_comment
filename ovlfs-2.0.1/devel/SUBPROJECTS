@@ -1,0 +1,328 @@
+				OVLFS
+			     SUB-PROJECTS
+
+The ovlfs project has many possible roads to take in its implementation.  Below
+is a list of major portions of the project that may be implemented; each such
+portion is refered to as a sub-project.  Keep in mind that they may not all be
+independent of each other, and some may not even be able to work with others.
+
+Here is an index of the subprojects described below.
+
+	1. Storage Method Interface Subproject
+	2. Blocked File Storage Method Subproject
+	3. Raw Device Storage Method Subproject
+	4. Root Filesystem Subproject
+	5. Caching Filesystem Subproject
+	6. Pseudo Filesystem Subproject
+	7. Kernel V2.2 Version Subproject
+
+
+
+		 ===================================
+		 STORAGE METHOD INTERFACE SUBPROJECT
+		 ===================================
+
+PURPOSE:
+	Allow multiple physical storage methods to be used with the ovlfs.
+
+DESCRIPTION:
+	By separating the interaction of the physical storage from the core of
+	the ovlfs, this subproject allows new physical storage methods to be
+	written without affecting the core filesystem and its features as well
+	as allowing the core filesystem to be modified without affecting the
+	physical storage method.
+
+	In addition, a single ovlfs filesystem driver can be used with multiple
+	physical storage methods on the same system.  Each mounted ovlfs file-
+	system could pick the appropriate storage method.
+
+WORK ITEMS:
+	1. Analyze the interface between the ovlfs and physical storage.  This
+	   includes the interaction and data involved.
+
+	2. Define the structures and operations needed to support dynamic
+	   loading and registering of storage methods.
+
+	3. Extract the existing "Storage File" Storage Method from the core.
+
+	4. Implement the functions to use the defined interface and to allow
+	   the registering of Storage Methods.
+
+	5. Document the interface definition.
+
+
+
+		======================================
+		BLOCKED FILE STORAGE METHOD SUBPROJECT
+		======================================
+
+PURPOSE:
+	Store the ovlfs information in a file in another filesystem so that
+	the amount of kernel memory used by the filesystem can be reduced to
+	the minimum amount needed for the active inode's.
+
+DESCRIPTION:
+	Using "blocking", or another appropriate file structuring, save all of
+	the ovlfs' inodes' information in a file so that the information can
+	be retrieved from the file at "run time" rather than loading the
+	entire file's contents into memory, as is done by the "Storage File"
+	method.
+
+	This method still uses another filesystem to store the ovlfs'
+	information, as opposed to a raw disk partition or other device, while
+	removing the overbearing requirement on memory which the "Storage File"
+	method has.  Here are a couple of the advantages of this method:
+
+		1. ability to grow or shrink the storage file.  A raw device
+		   can not be resized, at least not by the ovlfs itself.  Also,
+		   the Storage File method will not detect that it has run out
+		   of disk space for its storage until it attempts to save the
+		   information.  Therefore, the filesystem's information will
+		   be lost when disk space is not sufficient.
+
+		2. ability to manage the storage as a regular file.  The file
+		   can be copied, archived, and editted as a regular file.
+
+WORK ITEMS:
+	1. design and document the structure of the file.  The storage space
+	   needs to be allocated for the following:
+
+		a. Free space.  When an inode, directory entry, or any other
+		   item is removed from the file, there needs to be a method
+		   of remembering and reusing that space.
+
+		b. Inode list.  The number of inodes is not limited.
+
+		c. Inode attributes.  Generally fixed in size, except for the
+		   reference name for an inode.  However, there is no need to
+		   save the reference name for the inode in physical storage.
+
+		d. Directory entries.  Directories can have any number of
+		   entries; this needs to be supported.  Do NOT forget to
+		   store deleted entries and remember which are deleted and
+		   which are not.
+
+		e. Map entries.  A map entry remembers which ovlfs inode refers
+		   to a specific inode in a "real" filesystem.
+
+		f. (optional, and probably in version 2 of this piece) File
+		   Contents.  If partial contents are to be stored, then a
+		   "mapping" of the partial contents is also needed.
+
+	   note that the presentation of these items here is not intended to
+	   imply or dictate the structure in any way.
+
+	2. design and document the method of interaction with the physical
+	   storage.  The inode for the file could be held and interacted with
+	   directly, O/S routines could be used to interact with the file, or
+	   the system call interface could be used.
+
+	3. implement it.  Document any design and implementation designs that
+	   impact the use and administration of the Storage Method.
+
+
+
+		 ====================================
+		 RAW DEVICE STORAGE METHOD SUBPROJECT
+		 ====================================
+
+PURPOSE:
+	Store the ovlfs information on a device, as most normal filesystems do.
+	The amount of kernel memory used by the filesystem can be reduced to
+	the minimum amount needed for the active inode's.
+
+DESCRIPTION:
+	Using "blocking" save all of the ovlfs' information on a device so
+	that the information can be retrieved from the file at "run time"
+	rather than loading the	entire contents into memory, as is done by the
+	"Storage File" method.
+
+	This method eliminates the ovlfs' need to use another filesystem to
+	store its information.  It is highly likely that this Storage Method
+	will be needed for the ROOT FILESYSTEM SUBPROJECT to be completed -
+	at least out of the storage methods listed in this document.
+
+WORK ITEMS:
+	1. design and document the blocking of the device.  The storage space
+	   needs to be allocated for the following:
+
+		a. Free space.  When an inode, directory entry, or any other
+		   item is removed from the file, there needs to be a method
+		   of remembering and reusing that space.
+
+		b. Inode list.  The number of inodes is not limited.
+
+		c. Inode attributes.  Generally fixed in size, except for the
+		   reference name for an inode.  However, there is no need to
+		   save the reference name for the inode in physical storage.
+
+		d. Directory entries.  Directories can have any number of
+		   entries; this needs to be supported.  Do NOT forget to
+		   store deleted entries and remember which are deleted and
+		   which are not.
+
+		e. Map entries.  A map entry remembers which ovlfs inode refers
+		   to a specific inode in a "real" filesystem.
+
+		f. (optional, and probably in version 2 of this piece) File
+		   Contents.  If partial contents are to be stored, then a
+		   "mapping" of the partial contents is also needed.
+
+	   note that the presentation of these items here is not intended to
+	   imply or dictate the structure in any way.
+
+	2. design and document the method of interaction with the physical
+	   storage.  The block device routines could be used to interact with
+	   the device through the buffer cache, or O/S routines could be used
+	   to interact with the device through a device file.  Of course, in
+	   order to interact with the device through a device file, the device
+	   file must be accessible, which means that it would be difficult, if
+	   even possible, to use this method with the ROOT FILESYSTEM
+	   SUBPROJECT.
+
+	3. implement it.  Document any design and implementation designs that
+	   impact the use and administration of the Storage Method.
+
+	4. create a program to initialize a raw device for use with the file-
+	   system (similar to mkfs or mke2fs).  This is an important aspect of
+	   this storage method since it allows the system administrator to
+	   manage the devices more safely; it would be awful if mounting the
+	   ovlfs on the wrong device caused that device to become initialized!
+
+	5. consider/create a filesystem checking program, similar to fsck, for
+	   the storage method.
+
+
+		      ==========================
+		      ROOT FILESYSTEM SUBPROJECT
+		      ==========================
+
+PURPOSE:
+	Allow the ovlfs to be mounted as the root filesystem for a linux host.
+
+DESCRIPTION:
+	This subproject is one of the major driving forces behind the
+	implementation of the ovlfs to begin.  By allowing the ovlfs to be
+	mounted as the root filesystem, a read-only device could be used to
+	house the majority of the operating system, which changes infrequently,
+	while allowing the root filesystem to be used normally.
+
+	Another benefit to this subproject is that an upgrade to the operating
+	system could be applied on top of the existing operating system without
+	affecting the original.  So, for example, if the link loader changes
+	and can not operate properly without several libraries being updated,
+	the system administrator would be able to recover a failed upgrade by
+	mounting the original root filesystem by itself.  Otherwise, the
+	system admin must find another boot device and attempt to recover the
+	original os or complete the transition.
+
+WORK ITEMS:
+	1. Determine and document how to allow the ovlfs to directly serve
+	   inodes from the "real" filesystems while still playing nicely with
+	   the VFS.  Here are the main issues:
+
+		a. The VFS needs to know the real filesystems are in use.  It
+		   is important that the VFS not allow the filesystems to be
+		   mounted while in use by the ovlfs.
+
+		b. The VFS needs to make sure it DOES NOT serve inodes from
+		   the real filesystems itself through the root filesystem;
+		   i.e. they must not have mount points - at least ones that
+		   could ever match a path used by the O/S.
+
+		c. The VFS already has all of the code necessary to maintain
+		   the inode cache; a large amount of work could be saved by
+		   "convincing" the VFS to manage the real filesystems' inodes
+		   on behalf of the ovlfs.
+
+	2. Determine what other modifications need to be completed and any
+	   dependencies between this subproject and other subprojects.
+
+NOTES:
+	- This subproject may be the cause of the need to move from version
+	  1 to version 2 of the filesystem (i.e. some compatibility may be
+	  lost).
+
+
+		    =============================
+		    CACHING FILESYSTEM SUBPROJECT
+		    =============================
+
+PURPOSE:
+	Provide a mechanism, through the ovlfs, to allow files to be cached
+	onto a faster device from a slower one.
+
+DESCRIPTION:
+	This subproject was originally created and worked on by Scott Smyth.
+	We need to communicate again, because I do not yet have his source.
+
+WORK ITEMS:
+	1. contact Scott and try to obtain his source as well as any supporting
+	   materials he has.
+
+
+
+		     ============================
+		     PSEUDO FILESYSTEM SUBPROJECT
+		     ============================
+
+PURPOSE:
+	Create a filesystem driver with support functions for writing pseudo
+	filesystems.
+
+DESCRIPTION:
+	The ovlfs is a pseudo filesystem, and like all pseudo filesystems,
+	has a need to provide a method of tracking inodes.  In order to aid
+	others in developing pseudo filesystems, many of the functions used
+	by ovlfs can be made available to those developers.
+
+WORK ITEMS:
+	1. analyze the interface between the needs for a psuedo filesystem
+	   developer and the existing ovlfs source.
+
+	2. determine whether another filesystem should be developed separate
+	   from the ovlfs, or the ovlfs source code should be used.  The best
+	   solution might be to use the same source, adding preprocessor
+	   statements to compile one filesystem or another.
+
+	3. design the solution.
+
+	4. implement it.
+
+	5. document and distribute it.
+
+
+		    ==============================
+		    KERNEL V2.2 VERSION SUBPROJECT
+		    ==============================
+
+ADDED: 30 January 1999
+
+PURPOSE:
+	Create a version of the ovlfs filesystem for use with the linux
+	kernel version 2.2.
+
+DESCRIPTION:
+	Linux Kernel version 2.2 made many changes to the VFS including the
+	filesystem interface.  The ovlfs needs to be modified to work on
+	this version of the kernel.  However, the modifications should not
+	exclude support for kernel version 2.1, as much as possible, so
+	precompiler directives should be used to distinguish code for both
+	versions of the kernel and minimize redundant code.
+
+WORK ITEMS:
+	1. Determine precompiler symbol names to use to separate V2.1 and V2.2
+	   code, and potentially future versions.  Include symbols that can be
+	   used to alias specific data structures, function names, etc. that
+	   may change between versions.  (Don't go overboard, though).
+
+	2. Add the functions to support the new superblock and inode operations
+	   in the new kernel.  Also, modify the appropriate structures to
+	   contain the necessary file pointers; be careful, some ordering has
+	   changed.
+
+	3. Verify that the ovlfs does not violate any changes to the VFS,
+	   especially in its direct use of the inodes.
+
+
+[version @(#) SUBPROJECTS 1.2]

@@ -1,0 +1,34 @@
+1. Complete Storage Method I/F [entered Sun Jan 17 17:31:28 EST 1999]
+   Convert the use of elements in the super block information structure that
+   belong to the storage method to use the storage method's structure.  In
+   order to complete this, the following is needed:
+
+	A. add an option interface to the storage method interface.  Any
+	   options not recognized by the ovlfs must be saved and verified
+	   with the storage method once the storage method is determined.
+
+	B. change all references of the following elements of the super
+	   block information structure:
+
+		CURRENT		NEW
+		=======		===
+		stg_file	u.stg1.stg_name
+		stg_file_inode	u.stg1.stg_inode
+		inodes		u.stg1.inodes
+		base_to_ovl	u.stg1.base_to_ovl
+		stg_to_ovl	u.stg1.stg_to_ovl
+
+	C. add a storage method operation for statfs, and change the existing
+	   ovlfs_statfs function to use it.
+
+   DEVELOPER: Arthur N.
+
+2. Analysis of OVLFS as Root [entered Sun Jan 17 17:31:05 EST 1999]
+   Determine what would be necessary to allow the ovlfs to work as the root
+   filesystem.  In particular, what does the ovlfs need to do in order to
+   obtain inodes directly from other filesystems without going through the
+   VFS, but also allowing the VFS to recognize that those filesystem's are in
+   use; it is important to allow the VFS to track the inode's for those file-
+   systems even though they are not "mounted".
+
+   DEVELOPER: none

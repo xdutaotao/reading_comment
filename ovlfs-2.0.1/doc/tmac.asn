@@ -1,0 +1,115 @@
+.\" COPYRIGHT (C) 1998 By Arthur Naseef
+.\"
+.\" This file is covered under the GNU General Public License Version 2.  For
+.\"  more information, see the file COPYING.
+.\"
+.\"
+.\" FILE: tmac.asn
+.\"
+.\" DESCRIPTION: This file contains general purpose nroff/troff macros.
+.\"
+.\" SCCS ID: @(#) tmac.asn 1.1
+.\"
+.\"
+.\" REVISION HISTORY
+.\"
+.\" DATE	AUTHOR		DESCRIPTION
+.\" ===========	===============	==============================================
+.\" 03/08/1998	ARTHUR N.	Initial Release
+.\"
+.\"
+.\" **************************************************************************
+.\"
+.\" START OF LIST MACROS
+.\"
+.de BL    \" Begin Bullet List
+.in +8n             \" increase indent by about 8 characters
+.nr *i \\n(.i/1n    \" remember the current indent in units of 'en'
+.nr *i +2           \" add two more characters to the list item indent
+.ds OL \\*(LM       \" remember the last mark - can only nest 2 levels
+.ds LM \(bu         \" set the list item marker to a bullet
+..
+.de LE    \" End List
+.nr *i -10      \" calculate original indent
+.in \\n(*in     \" reset original indent
+.ds LM \\*(OL   \" restore last marker saved
+..
+.de LI    \" List Item
+.in \\n(*in    \" indent to list item space
+.br            \" make sure to start a new line
+.ti -2n        \" indent, next line only, back about 2 characters
+\\*(LM         \" display list marker
+..
+.\"
+.\" **************************************************************************
+.\"
+.\" START OF THE HANGING INDENT MACRO
+.\"
+.\" begin hanging indent from current point after the text of argument 1,
+.\"  if defined.
+.\"
+.nr %I 0
+.nr w 1n	\" Set this once and allow it to be changed later
+.de HI
+.if \\n(%I-9  .ab HI macro stack error    \" If %I > 9, can't continue
+.nr I\\n(%I \\n(.iu
+.nr %I \\n(%I+1
+.di *H           \" Divert output to *H macro and put $1 on input
+\&\\$1
+.br              \" Break this input to put in output (so the diversion gets it)
+.di              \" End the diversion
+.nr $i \\n(dlu+\\nwu  \" Calculate the hanging indentation
+.nr %i \\nw-\w'  '    \" Take offset and subtract the spaces that are coming
+.ti 0
+\&\\*(*H\\h'\\n(%iu'
+'in \\n($iu
+..
+.\"
+.\" end of hanging indent - restore the PREVIOUS indent
+.\"
+.de HE
+.nr %I \\n(%I-1       \" Decrement current indentation counter
+.in \\n(I\\n(%Iu      \" Restore indentation at current counter
+..
+.\"
+.\" END OF THE HANGING INDENT MACRO
+.\"
+.\" **************************************************************************
+.\"
+.\" START OF THE TAB FIELD MACRO
+.\"
+.\" The .Tf macro moves over to the specified horrizontal position on the line
+.\"  If the current input is past the requested position, then a break is
+.\"  inserted followed by the movement to the requested position.
+.\"
+.\" NOTE: the positioning does not work correctly for troff; I believe the
+.\"       problem is the length of the diversion is different than the length
+.\"       of the string when output.  The results are close, but not perfectly
+.\"       aligned
+.\"
+.de Tf  \" tab field
+.\"		Check argument
+.if \\n(.$<1 .ab Tf macro requires an argument
+.\"		Find the length of the current line: use a diversion to get it
+.di }s
+.br
+.di
+.\"		Find length of the diversion plus the trailing space that will
+.\"		follow it
+.di }t
+'ti 0           \"	Indent already part of string }s
+\\*(}s\c\ 
+.br
+.di
+.\"		Calculate the length of the line (minus the current indent)
+.nr }u \\n(dlu-\\n(.iu
+.br
+.\"		Now put the original input line back out followed by the
+.\"		horizontal positioning requested
+'ti 0
+\\*(}s\c            \"		Again, indent is already part of string }s
+.ie \\n(}u-\\$1>0 \{
+.br
+\\h'\\$1-1m'\c \}
+.el \\h'\\$1-\\n(}uu-1m'\c
+..

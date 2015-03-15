@@ -1,0 +1,185 @@
+ 45109
+OVLFS: ovlfs_put_super putting inode at 0x1b9e9b0 inode 45137
+OVLFS: put super returning
+removing ovl fs module (compiled Fri Aug 29 14:18:47 EDT 1997)
+starting ovl fs module (compiled Fri Aug 29 14:18:47 EDT 1997)
+OVLFS: ovl_fs_read_super called
+OVLFS: device for super block = 6
+OVLFS: parsing options 'root=./dira,storage_root=./dirb'
+OVLFS:    one_option 'root=./dira'
+OVLFS:    one_option 'storage_root=./dirb'
+OVLFS: ovlfs_read_inode called; ino = 16777216
+OVLFS: ovl_fs_read_super returning
+OVLFS: start ovlfs_lookup(16777216, file2)
+OVLFS: ovlfs_read_inode called; ino = 16777218
+OVLFS: ovlfs_lookup: putting inode 16777216
+OVLFS:               lookup orig returned 0, inode at 0x1f89aa8
+OVLFS: call to ovlfs_read(45140, 0x1905680, 0x8002b30, 4096)
+OVLFS: ovlfs_resolve_inode inode 45140 at 0x1f89aa8: overlay inode is null
+OVLFS: call to ovlfs_read(45140, 0x1905680, 0x8002b30, 4096)
+OVLFS: ovlfs_resolve_inode inode 45140 at 0x1f89aa8: overlay inode is null
+OVLFS: ovlfs_put_inode called (inode 45140)
+OVLFS: ovlfs_put_inode putting inode 45140
+OVLFS: ovlfs_dir_readdir(inode 16777216, f_pos 0)
+OVLFS: dlist_add_name 'file7'
+OVLFS: dlist_add_name 'mine'
+OVLFS: dlist_add_name 'dir1'
+OVLFS: dlist_add_name 'abc'
+OVLFS: dlist_add_name 'file1'
+OVLFS: dlist_add_name 'only_a'
+OVLFS: dlist_add_name 'only_a2'
+OVLFS: dlist_add_name 'tmp'
+OVLFS: dlist_add_name 'arts'
+OVLFS: dlist_add_name 'roots'
+OVFLS:    resulting pos = 1024
+OVLFS: ovlfs_dir_readdir: putting orig inode 45137
+OVLFS: dlist_add_name 'file1'
+OVLFS: dlist_add_name 'file2'
+OVLFS: dlist_add_name 'file3'
+OVLFS: dlist_add_name 'dir1'
+OVLFS: dlist_add_name 'only_a'
+OVLFS: dlist_add_name 'only_a2'
+OVLFS: dlist_add_name 'tmp'
+OVLFS: dlist_add_name 'arts'
+OVLFS: dlist_add_name 'roots'
+OVFLS:    resulting pos = 1024
+OVLFS: ovlfs_dir_readdir: putting orig inode 45109
+OVLFS: ovlfs_dir_readdir(inode 16777216, f_pos 7)
+OVFLS:    resulting pos = 1024
+OVLFS: ovlfs_dir_readdir: putting orig inode 45137
+OVFLS:    resulting pos = 1024
+OVLFS: ovlfs_dir_readdir: putting orig inode 45109
+OVLFS: ovlfs_dir_readdir(inode 16777216, f_pos 0)
+OVLFS: dlist_add_name 'file7'
+OVLFS: dlist_add_name 'mine'
+OVLFS: dlist_add_name 'dir1'
+OVLFS: dlist_add_name 'abc'
+OVLFS: dlist_add_name 'file1'
+OVLFS: dlist_add_name 'only_a'
+OVLFS: dlist_add_name 'only_a2'
+OVLFS: dlist_add_name 'tmp'
+OVLFS: dlist_add_name 'arts'
+OVLFS: dlist_add_name 'roots'
+OVFLS:    resulting pos = 1024
+OVLFS: ovlfs_dir_readdir: putting orig inode 45137
+OVLFS: dlist_add_name 'file1'
+OVLFS: dlist_add_name 'file2'
+OVLFS: dlist_add_name 'file3'
+OVLFS: dlist_add_name 'dir1'
+OVLFS: dlist_add_name 'only_a'
+OVLFS: dlist_add_name 'only_a2'
+OVLFS: dlist_add_name 'tmp'
+OVLFS: dlist_add_name 'arts'
+OVLFS: dlist_add_name 'roots'
+OVFLS:    resulting pos = 1024
+OVLFS: ovlfs_dir_readdir: putting orig inode 45109
+OVLFS: ovlfs_dir_readdir(inode 16777216, f_pos 7)
+OVFLS:    resulting pos = 1024
+OVLFS: ovlfs_dir_readdir: putting orig inode 45137
+OVFLS:    resulting pos = 1024
+OVLFS: ovlfs_dir_readdir: putting orig inode 45109
+OVLFS: start ovlfs_lookup(16777216, file2)
+OVLFS: ovlfs_read_inode called; ino = 16777218
+OVLFS: ovlfs_lookup: putting inode 16777216
+OVLFS:               lookup orig returned 0, inode at 0x16fa3e0
+OVLFS: ovlfs_put_inode called (inode 45140)
+OVLFS: ovlfs_put_inode putting inode 45140
+OVLFS: start ovlfs_lookup(16777216, file2)
+OVLFS: ovlfs_read_inode called; ino = 16777218
+OVLFS: ovlfs_lookup: putting inode 16777216
+OVLFS:               lookup orig returned 0, inode at 0x6ed1f0
+OVLFS: call to ovlfs_write(45140, 0x8becc0, 0x400bd000, 3)
+OVLFS: ovlfs_resolve_inode inode 45140 at 0x6ed1f0: overlay inode is null
+OVLFS: ovlfs_copy_file: ovlfs inode lacking directory reference
+OVLFS: ovlfs_put_inode called (inode 45140)
+OVLFS: ovlfs_put_inode putting inode 45140
+os 5)
+OVLFS: ovlfs_put_inode called (inode 16777216)
+OVLFS: ovlfs_put_inode called (inode 16777216)
+OVLFS: ovlfs_put_inode called (inode 16777216)
+OVLFS: ovlfs_dir_readdir(inode 16777216, f_pos 0)
+OVLFS: ovlfs_dir_readdir(inode 16777216, f_pos 5)
+OVLFS: ovlfs_put_inode called (inode 16777216)
+OVLFS: ovlfs_put_inode called (inode 16777216)
+OVLFS: ovlfs_put_inode called (inode 16777216)
+VFS: iput: trying to free free inode
+VFS: device 00:00, inode 16777216, mode=00040555
+OVLFS: put super called
+OVLFS: ovlfs_put_super putting inode at 0x1c2faa8 inode 45109
+OVLFS: ovlfs_put_super putting inode at 0x1b9e9b0 inode 45137
+OVLFS: put super returning
+hdc: media changed
+OVLFS: ovl_fs_read_super called
+OVLFS: device for super block = 6
+OVLFS: parsing options 'root=./dira,storage_root=./dirb'
+OVLFS:    one_option 'root=./dira'
+OVLFS:    one_option 'storage_root=./dirb'
+OVLFS: ovlfs_read_inode called; ino = 16777216
+OVLFS: ovl_fs_read_super returning
+OVLFS: ovlfs_dir_readdir(inode 16777216, f_pos 0)
+OVLFS: dlist_add_name 'file7'
+OVLFS: dlist_add_name 'mine'
+OVLFS: dlist_add_name 'dir1'
+OVLFS: dlist_add_name 'abc'
+OVLFS: dlist_add_name 'file1'
+OVLFS: dlist_add_name 'only_a'
+OVLFS: dlist_add_name 'only_a2'
+OVLFS: dlist_add_name 'tmp'
+OVLFS: dlist_add_name 'arts'
+OVLFS: dlist_add_name 'roots'
+OVLFS: dlist_add_name 'new-file'
+OVFLS:    resulting pos = 1024
+OVLFS: ovlfs_dir_readdir: putting orig inode 45137
+OVLFS: dlist_add_name 'file1'
+OVLFS: dlist_add_name 'file2'
+OVLFS: dlist_add_name 'file3'
+OVLFS: dlist_add_name 'dir1'
+OVLFS: dlist_add_name 'only_a'
+OVLFS: dlist_add_name 'only_a2'
+OVLFS: dlist_add_name 'tmp'
+OVLFS: dlist_add_name 'arts'
+OVLFS: dlist_add_name 'roots'
+OVFLS:    resulting pos = 1024
+OVLFS: ovlfs_dir_readdir: putting orig inode 45109
+OVLFS: ovlfs_dir_readdir(inode 16777216, f_pos 7)
+OVFLS:    resulting pos = 1024
+OVLFS: ovlfs_dir_readdir: putting orig inode 45137
+OVFLS:    resulting pos = 1024
+OVLFS: ovlfs_dir_readdir: putting orig inode 45109
+OVLFS: start ovlfs_lookup(16777216, file2)
+OVLFS: ovlfs_read_inode called; ino = 16777218
+OVLFS: ovlfs_lookup: putting inode 16777216
+OVLFS:               lookup orig returned 0, inode at 0x1f6c8
+OVLFS: call to ovlfs_read(45140, 0x8bed40, 0x8002b30, 4096)
+OVLFS: ovlfs_resolve_inode inode 45140 at 0x1f6c8: overlay inode is null
+OVLFS: call to ovlfs_read(45140, 0x8bed40, 0x8002b30, 4096)
+OVLFS: ovlfs_resolve_inode inode 45140 at 0x1f6c8: overlay inode is null
+OVLFS: ovlfs_put_inode called (inode 45140)
+OVLFS: ovlfs_put_inode putting inode -268370093
+OVLFS: ovlfs_put_inode putting inode 45140
+OVLFS: start ovlfs_lookup(16777216, file2)
+OVLFS: ovlfs_read_inode called; ino = 16777218
+OVLFS: ovlfs_lookup: putting inode 16777216
+OVLFS:               lookup orig returned 0, inode at 0x1e7dd90
+OVLFS: call to ovlfs_write(45140, 0x8bee80, 0x400bd000, 3)
+OVLFS: ovlfs_resolve_inode inode 45140 at 0x1e7dd90: overlay inode is null
+OVLFS: call to ovlfs_create(16777216, new-file, 8, 0100644)
+OVLFS: ovlfs_put_inode called (inode 45140)
+OVLFS: ovlfs_put_inode putting inode -268370093
+OVLFS: ovlfs_put_inode called (inode 16777216)
+OVLFS: ovlfs_put_inode putting inode 45109
+OVLFS: ovlfs_put_inode putting inode 45137
+OVLFS: ovlfs_put_inode putting inode 45140
+OVLFS: ovlfs_put_inode called (inode 16777216)
+OVLFS: ovlfs_put_inode called (inode 16777216)
+OVLFS: ovlfs_dir_readdir(inode 16777216, f_pos 0)
+OVLFS: ovlfs_dir_readdir(inode 16777216, f_pos 5)
+OVLFS: ovlfs_put_inode called (inode 16777216)
+OVLFS: ovlfs_put_inode called (inode 16777216)
+OVLFS: ovlfs_put_inode called (inode 16777216)
+VFS: iput: trying to free free inode
+VFS: device 00:00, inode 16777216, mode=00040555
+OVLFS: put super called
+OVLFS: ovlfs_put_super putting inode at 0x3b35d0 inode 45109
+OVLFS: ovlfs_put_super putting inode at 0x16fa4d8 inode 45137
+OVLFS: put super returning

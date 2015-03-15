@@ -1,0 +1,521 @@
+   0  $accept : TABFILE $end
+
+   1  $$1 :
+
+   2  TABFILE : $$1 TABFILE_ELE MORE_TABFILE_ELE
+
+   3  MORE_TABFILE_ELE : MORE_TABFILE_ELE TABFILE_ELE
+   4                   |
+
+   5  TABFILE_ELE : FS_DECL
+   6              | FS_SELECTOR
+
+   7  FS_DECL : t_fs NAME FS_OPTIONS t_end
+
+   8  $$2 :
+
+   9  FS_OPTIONS : $$2 FS_OPT_LIST
+
+  10  FS_OPT_LIST : FS_ONE_OPT FS_OPT_LIST
+  11              |
+
+  12  FS_ONE_OPT : t_devfile STRING
+  13             | t_base_root STRING
+  14             | t_mnt_pt STRING
+  15             | t_options STRING
+  16             | t_stg_file STRING
+  17             | t_stg_method STRING
+  18             | t_stg_root STRING
+
+  19  FS_SELECTOR : CD_SELECTOR t_end
+  20              | SPECIAL_SELECTOR t_end
+
+  21  CD_SELECTOR : t_cd t_selector NAME
+  22              | t_cd t_selector NAME SELECTOR_TABLE
+
+  23  SPECIAL_SELECTOR : t_special t_selector NAME SPEC_SEL_CMD
+  24                   | t_special t_selector NAME SPEC_SEL_CMD SELECTOR_TABLE
+
+  25  SPEC_SEL_CMD : t_command SPEC_SEL_CMD_ARGS
+
+  26  SPEC_SEL_CMD_ARGS : SPEC_SEL_CMD_ARGS STRING
+  27                    | STRING
+
+  28  SELECTOR_TABLE : SELECTOR_TABLE SELECTOR_TABLE_ELE
+  29                 | SELECTOR_TABLE_ELE
+
+  30  SELECTOR_TABLE_ELE : t_key STRING STRING FS_OPTIONS
+
+  31  NAME : STRING
+
+  32  STRING : v_string
+
+state 0
+	$accept : . TABFILE $end  (0)
+	$$1 : .  (1)
+
+	.  reduce 1
+
+	TABFILE  goto 1
+	$$1  goto 2
+
+
+state 1
+	$accept : TABFILE . $end  (0)
+
+	$end  accept
+
+
+state 2
+	TABFILE : $$1 . TABFILE_ELE MORE_TABFILE_ELE  (2)
+
+	t_fs  shift 3
+	t_cd  shift 4
+	t_special  shift 5
+	.  error
+
+	TABFILE_ELE  goto 6
+	FS_DECL  goto 7
+	FS_SELECTOR  goto 8
+	CD_SELECTOR  goto 9
+	SPECIAL_SELECTOR  goto 10
+
+
+state 3
+	FS_DECL : t_fs . NAME FS_OPTIONS t_end  (7)
+
+	v_string  shift 11
+	.  error
+
+	NAME  goto 12
+	STRING  goto 13
+
+
+state 4
+	CD_SELECTOR : t_cd . t_selector NAME  (21)
+	CD_SELECTOR : t_cd . t_selector NAME SELECTOR_TABLE  (22)
+
+	t_selector  shift 14
+	.  error
+
+
+state 5
+	SPECIAL_SELECTOR : t_special . t_selector NAME SPEC_SEL_CMD  (23)
+	SPECIAL_SELECTOR : t_special . t_selector NAME SPEC_SEL_CMD SELECTOR_TABLE  (24)
+
+	t_selector  shift 15
+	.  error
+
+
+state 6
+	TABFILE : $$1 TABFILE_ELE . MORE_TABFILE_ELE  (2)
+	MORE_TABFILE_ELE : .  (4)
+
+	.  reduce 4
+
+	MORE_TABFILE_ELE  goto 16
+
+
+state 7
+	TABFILE_ELE : FS_DECL .  (5)
+
+	.  reduce 5
+
+
+state 8
+	TABFILE_ELE : FS_SELECTOR .  (6)
+
+	.  reduce 6
+
+
+state 9
+	FS_SELECTOR : CD_SELECTOR . t_end  (19)
+
+	t_end  shift 17
+	.  error
+
+
+state 10
+	FS_SELECTOR : SPECIAL_SELECTOR . t_end  (20)
+
+	t_end  shift 18
+	.  error
+
+
+state 11
+	STRING : v_string .  (32)
+
+	.  reduce 32
+
+
+state 12
+	FS_DECL : t_fs NAME . FS_OPTIONS t_end  (7)
+	$$2 : .  (8)
+
+	.  reduce 8
+
+	FS_OPTIONS  goto 19
+	$$2  goto 20
+
+
+state 13
+	NAME : STRING .  (31)
+
+	.  reduce 31
+
+
+state 14
+	CD_SELECTOR : t_cd t_selector . NAME  (21)
+	CD_SELECTOR : t_cd t_selector . NAME SELECTOR_TABLE  (22)
+
+	v_string  shift 11
+	.  error
+
+	NAME  goto 21
+	STRING  goto 13
+
+
+state 15
+	SPECIAL_SELECTOR : t_special t_selector . NAME SPEC_SEL_CMD  (23)
+	SPECIAL_SELECTOR : t_special t_selector . NAME SPEC_SEL_CMD SELECTOR_TABLE  (24)
+
+	v_string  shift 11
+	.  error
+
+	NAME  goto 22
+	STRING  goto 13
+
+
+state 16
+	TABFILE : $$1 TABFILE_ELE MORE_TABFILE_ELE .  (2)
+	MORE_TABFILE_ELE : MORE_TABFILE_ELE . TABFILE_ELE  (3)
+
+	t_fs  shift 3
+	t_cd  shift 4
+	t_special  shift 5
+	$end  reduce 2
+
+	TABFILE_ELE  goto 23
+	FS_DECL  goto 7
+	FS_SELECTOR  goto 8
+	CD_SELECTOR  goto 9
+	SPECIAL_SELECTOR  goto 10
+
+
+state 17
+	FS_SELECTOR : CD_SELECTOR t_end .  (19)
+
+	.  reduce 19
+
+
+state 18
+	FS_SELECTOR : SPECIAL_SELECTOR t_end .  (20)
+
+	.  reduce 20
+
+
+state 19
+	FS_DECL : t_fs NAME FS_OPTIONS . t_end  (7)
+
+	t_end  shift 24
+	.  error
+
+
+state 20
+	FS_OPTIONS : $$2 . FS_OPT_LIST  (9)
+	FS_OPT_LIST : .  (11)
+
+	t_base_root  shift 25
+	t_devfile  shift 26
+	t_mnt_pt  shift 27
+	t_options  shift 28
+	t_stg_file  shift 29
+	t_stg_method  shift 30
+	t_stg_root  shift 31
+	t_end  reduce 11
+	t_key  reduce 11
+
+	FS_OPT_LIST  goto 32
+	FS_ONE_OPT  goto 33
+
+
+state 21
+	CD_SELECTOR : t_cd t_selector NAME .  (21)
+	CD_SELECTOR : t_cd t_selector NAME . SELECTOR_TABLE  (22)
+
+	t_key  shift 34
+	t_end  reduce 21
+
+	SELECTOR_TABLE  goto 35
+	SELECTOR_TABLE_ELE  goto 36
+
+
+state 22
+	SPECIAL_SELECTOR : t_special t_selector NAME . SPEC_SEL_CMD  (23)
+	SPECIAL_SELECTOR : t_special t_selector NAME . SPEC_SEL_CMD SELECTOR_TABLE  (24)
+
+	t_command  shift 37
+	.  error
+
+	SPEC_SEL_CMD  goto 38
+
+
+state 23
+	MORE_TABFILE_ELE : MORE_TABFILE_ELE TABFILE_ELE .  (3)
+
+	.  reduce 3
+
+
+state 24
+	FS_DECL : t_fs NAME FS_OPTIONS t_end .  (7)
+
+	.  reduce 7
+
+
+state 25
+	FS_ONE_OPT : t_base_root . STRING  (13)
+
+	v_string  shift 11
+	.  error
+
+	STRING  goto 39
+
+
+state 26
+	FS_ONE_OPT : t_devfile . STRING  (12)
+
+	v_string  shift 11
+	.  error
+
+	STRING  goto 40
+
+
+state 27
+	FS_ONE_OPT : t_mnt_pt . STRING  (14)
+
+	v_string  shift 11
+	.  error
+
+	STRING  goto 41
+
+
+state 28
+	FS_ONE_OPT : t_options . STRING  (15)
+
+	v_string  shift 11
+	.  error
+
+	STRING  goto 42
+
+
+state 29
+	FS_ONE_OPT : t_stg_file . STRING  (16)
+
+	v_string  shift 11
+	.  error
+
+	STRING  goto 43
+
+
+state 30
+	FS_ONE_OPT : t_stg_method . STRING  (17)
+
+	v_string  shift 11
+	.  error
+
+	STRING  goto 44
+
+
+state 31
+	FS_ONE_OPT : t_stg_root . STRING  (18)
+
+	v_string  shift 11
+	.  error
+
+	STRING  goto 45
+
+
+state 32
+	FS_OPTIONS : $$2 FS_OPT_LIST .  (9)
+
+	.  reduce 9
+
+
+state 33
+	FS_OPT_LIST : FS_ONE_OPT . FS_OPT_LIST  (10)
+	FS_OPT_LIST : .  (11)
+
+	t_base_root  shift 25
+	t_devfile  shift 26
+	t_mnt_pt  shift 27
+	t_options  shift 28
+	t_stg_file  shift 29
+	t_stg_method  shift 30
+	t_stg_root  shift 31
+	t_end  reduce 11
+	t_key  reduce 11
+
+	FS_OPT_LIST  goto 46
+	FS_ONE_OPT  goto 33
+
+
+state 34
+	SELECTOR_TABLE_ELE : t_key . STRING STRING FS_OPTIONS  (30)
+
+	v_string  shift 11
+	.  error
+
+	STRING  goto 47
+
+
+state 35
+	CD_SELECTOR : t_cd t_selector NAME SELECTOR_TABLE .  (22)
+	SELECTOR_TABLE : SELECTOR_TABLE . SELECTOR_TABLE_ELE  (28)
+
+	t_key  shift 34
+	t_end  reduce 22
+
+	SELECTOR_TABLE_ELE  goto 48
+
+
+state 36
+	SELECTOR_TABLE : SELECTOR_TABLE_ELE .  (29)
+
+	.  reduce 29
+
+
+state 37
+	SPEC_SEL_CMD : t_command . SPEC_SEL_CMD_ARGS  (25)
+
+	v_string  shift 11
+	.  error
+
+	STRING  goto 49
+	SPEC_SEL_CMD_ARGS  goto 50
+
+
+state 38
+	SPECIAL_SELECTOR : t_special t_selector NAME SPEC_SEL_CMD .  (23)
+	SPECIAL_SELECTOR : t_special t_selector NAME SPEC_SEL_CMD . SELECTOR_TABLE  (24)
+
+	t_key  shift 34
+	t_end  reduce 23
+
+	SELECTOR_TABLE  goto 51
+	SELECTOR_TABLE_ELE  goto 36
+
+
+state 39
+	FS_ONE_OPT : t_base_root STRING .  (13)
+
+	.  reduce 13
+
+
+state 40
+	FS_ONE_OPT : t_devfile STRING .  (12)
+
+	.  reduce 12
+
+
+state 41
+	FS_ONE_OPT : t_mnt_pt STRING .  (14)
+
+	.  reduce 14
+
+
+state 42
+	FS_ONE_OPT : t_options STRING .  (15)
+
+	.  reduce 15
+
+
+state 43
+	FS_ONE_OPT : t_stg_file STRING .  (16)
+
+	.  reduce 16
+
+
+state 44
+	FS_ONE_OPT : t_stg_method STRING .  (17)
+
+	.  reduce 17
+
+
+state 45
+	FS_ONE_OPT : t_stg_root STRING .  (18)
+
+	.  reduce 18
+
+
+state 46
+	FS_OPT_LIST : FS_ONE_OPT FS_OPT_LIST .  (10)
+
+	.  reduce 10
+
+
+state 47
+	SELECTOR_TABLE_ELE : t_key STRING . STRING FS_OPTIONS  (30)
+
+	v_string  shift 11
+	.  error
+
+	STRING  goto 52
+
+
+state 48
+	SELECTOR_TABLE : SELECTOR_TABLE SELECTOR_TABLE_ELE .  (28)
+
+	.  reduce 28
+
+
+state 49
+	SPEC_SEL_CMD_ARGS : STRING .  (27)
+
+	.  reduce 27
+
+
+state 50
+	SPEC_SEL_CMD : t_command SPEC_SEL_CMD_ARGS .  (25)
+	SPEC_SEL_CMD_ARGS : SPEC_SEL_CMD_ARGS . STRING  (26)
+
+	v_string  shift 11
+	t_end  reduce 25
+	t_key  reduce 25
+
+	STRING  goto 53
+
+
+state 51
+	SPECIAL_SELECTOR : t_special t_selector NAME SPEC_SEL_CMD SELECTOR_TABLE .  (24)
+	SELECTOR_TABLE : SELECTOR_TABLE . SELECTOR_TABLE_ELE  (28)
+
+	t_key  shift 34
+	t_end  reduce 24
+
+	SELECTOR_TABLE_ELE  goto 48
+
+
+state 52
+	SELECTOR_TABLE_ELE : t_key STRING STRING . FS_OPTIONS  (30)
+	$$2 : .  (8)
+
+	.  reduce 8
+
+	FS_OPTIONS  goto 54
+	$$2  goto 20
+
+
+state 53
+	SPEC_SEL_CMD_ARGS : SPEC_SEL_CMD_ARGS STRING .  (26)
+
+	.  reduce 26
+
+
+state 54
+	SELECTOR_TABLE_ELE : t_key STRING STRING FS_OPTIONS .  (30)
+
+	.  reduce 30
+
+
+18 terminals, 19 nonterminals
+33 grammar rules, 55 states

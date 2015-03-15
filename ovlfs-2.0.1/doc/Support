@@ -1,0 +1,77 @@
+				=======
+				Support
+				=======
+
+    There is no official support for this software.  However, I intend to
+improve upon it and provide informal support for it as time permits.  I do have
+a full time job, so this work must take a back seat.  If you are interested in
+paying for support, contact me and we can see if we can come to an agreeable
+arrangement.
+
+    At the end of this file, I will place the information on where to contact
+me.  If I do not receive too much junk email, then this information should
+remain valid indefinitely.  If, for any reason, I must change email accounts,
+I appologize for the inconvenience.
+
+
+============
+MAILING LIST
+============
+
+    If you are interested in being notified of updates or changes of address,
+please send me a brief email message indicating this and where to contact
+you by email.  No paper mail will be provided.
+
+
+===============
+CONFIDENTIALITY
+===============
+
+    Any and all information you send to me will be kept in complete confidence
+unless you indicate otherwise.  I strongly dislike junk email, and I will do
+all that I can to prevent it.
+
+
+=============
+BUG REPORTING
+=============
+
+    When reporting a bug, please be sure to include the information on the
+version of this software, which is specified in the Version file in the doc
+subdirectory, as well as any and all changes from the original source tree.
+Changes include, but are not limited to, changed compiler options, modified
+source code, and additional compiler options.  Also, please note the version
+of the kernel you are working with.  Of course, include a description of the
+problem, and any information about the circumstances surrounding the
+occurrance of the problem.
+
+	SUMMARY OF NECESSARY INFORMATION:
+
+		- version of this software (doc/Version)
+		- modifications to this software or its default configuration
+		- version of the kernel (uname -r)
+		- description of problem
+		- other pertinent information (such as all mount options used)
+
+
+=============
+CONTACTING ME
+=============
+
+    In order to contact me, send email to the following address.  You may try
+to use the newsgroups, but I do not browse them too often, so your best bet is
+to send me email or to visit my web site.
+
+	email: ovlfs@cc91339-a.ewndsr1.nj.home.com
+	web:   http://home.att.net/~artnaseef
+
+	backup email: artnaseef@worldnet.att.net
+
+Please note that I rarely check the email at worldnet anymore because it is a
+hassle to do so; I am now connected to the internet by cable modem.  Also,
+due to the wording of the cable modem contract, please do not browse the
+server, cc91339-a.ewndsr1.nj.home.com; it is setup for my personal use and
+there is no useful information on that site that can not be obtained from the
+home.att.net site.  I appreciate your consideration in this matter.
+
+[version @(#) Support 1.3]

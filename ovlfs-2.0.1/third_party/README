@@ -1,0 +1,3 @@
+Notes on third party programs in this directory:
+
+	- cdinfo.c was modified to remove include <linux/ucdrom.h>.

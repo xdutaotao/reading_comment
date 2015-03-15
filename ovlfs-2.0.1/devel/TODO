@@ -1,0 +1,274 @@
+The following is a list of things that need to be done for the overlay file-
+system.  See the file IDEAS for some ideas on how some of these things can/
+should be done.
+
+
+	1. Determine how to handle deleted inodes.  (Q. How can deleted inodes
+	   be handled without copying all directory entries into the overlay
+	   filesystem?)
+
+	2. Determine how to map inode numbers.  It is preferrable to NOT keep
+	   a map of inodes in memory.  Is this necessary?  Files can be
+	   referenced by name as long as renaming can be handled (maybe
+	   through a create new/virtual delete old process).
+
+	3. Determine a good technique for storing partial updates in the
+	   overlay filesystem.  Note that changes to the file's size would
+	   need to be maintained for partial updates to work.
+
+	   PROBLEMS WITH THIS:
+
+		- If the original file is removed from the overlayed
+		  filesystem, partial updates are meaningless and should
+		  be removed.
+
+		- If the original file is modified, the partial updates might
+		  be invalid, especially for text files and variable length
+		  record data files.
+
+			* Of course, the user could use a copy command to
+			  copy the entire file into the overlay fs.
+
+	4. Add kernel functions that will allow a method to control aspects of
+	   the overlay filesystem.  For example, a function that forces the
+	   update of a directory's contents from the storage and base file-
+	   systems.
+
+
+===================
+CURRENT WORK ITEMS:
+===================
+note: some of these may or may not be working towards the final goals of the
+      development.  Therefore, they might be conflicting with other items
+      above.
+
+	1. Do not allow duplicate file names to be displayed in the directory
+	   listing.
+
+	   (completed Sat Aug 23 23:46:25 EDT 1997)
+
+	2. Add option flag to turn off the use of magic and/or magicr, but
+	   only if they are compiled in, of course. (?allow the name of the
+	   two magic files to be specified?)
+
+	   (completed prior to Tue Aug 26 22:29:43 EDT 1997, excluding changing
+	    of magic names)
+
+	3. Before creating a directory in the overlay fs that exists in the
+	   base fs, make certain that the nostorage (or is it noupdate?)
+	   options are not specified.
+
+	4. When creating files and/or directories, determine whether the
+	   original ownership should be maintained.  (maybe allow a mount
+	   option to override).
+
+	   (completed Tue Sep 16 09:55:54 EDT 1997; the ownership is set to the
+	    ownsership in the overlay filesystem so that it matches as closely
+	    as possible to the intended result.)
+
+	5. Determine whether the ovlfs_read_super needs work when the root
+	   directory inode can not be retrieved. (line 913 ovl_main.c).
+
+	   (completed Sat Feb 21 21:25:03 EST 1998)
+
+	6. Store the name of a file/inode in the inode information structure
+	   so that the ovlfs_copy_inode() function can use the correct name
+	   for the file.
+
+	   (completed Sun Aug 31 10:11:09 EDT 1997)
+
+*	7. Track removed and renamed files from the base filesystem; they
+	   must not re-appear if the overlay filesystem changes.
+
+	8. Make certain that ALL file references to a base file copied into
+	   the overlay filesystem are correct (i.e. all accesses, read or
+	   write, should refer to the overlay fs's file).
+
+	   (looks good; all file op's look for overlay inode first)
+
+	9. Track "tricks" used to make the overlay fs work.  This includes
+	   using get_fs() and set_fs() to allow calls to system functions.
+
+	10. Stop listing magic and magicr in the directory listing since
+	    they cause errors when a program such as find attempts to
+	    read their contents.
+
+	   (completed Tue Feb 24 17:38:48 EST 1998: the problem of programs
+	    having errors when reading the magic directories has been solved,
+	    and the "hidemagic" and "showmagic" options have been added to
+	    allow these directories to be hidden or shown, as desired)
+
+	11. Check the magic options for the lookup function; magic and magicr
+	    should not be returned if the magic option is off.
+
+	    (completed Tue Feb 24 17:40:18 EST 1998; actually completed prior
+	     to this time)
+
+	12. Update the i_nlink count for directories to include the number
+	    of subdirectories.  The find program, and possibly others, use
+	    this count to determine the number of subdirectories that exist.
+	    (yuck!) (maybe i_nlink could just be set to a large number?)
+
+	    (completed Tue Sep 16 09:53:11 EDT 1997, the count is currently
+	     being set to 2 plus the number of directory entries, even if
+	     the entries are not sub-directories.)
+
+	13. (entered: Thu Sep  4 21:10:19 EDT 1997)
+	    Decide whether to use the "ovlfs_externs_struct" or not.
+
+	    (not for now - the issue is that each source file would need to
+	     contain a function to setup its static functions in the
+	     ovlfs_externs_struct, and these functions would need to be
+	     external)
+
+	14. (entered: Sat Sep  6 13:57:10 EDT 1997)
+	    Move all inode preparations into the read_inode function.  In
+	    order to do this, the read_inode function needs to know what
+	    type of inode it is working with.  This can be done in one of
+	    two ways (that won't break due to multi-tasking):
+
+		a. use the inode number to determine the type of file (note:
+		   do NOT change the inode number after iget'ing it).
+
+		b. track the information for the inode number in the super-
+		   blocks information structure.
+
+	    ADVANTAGES:
+		a) the inode number is already accessible.
+		b) the inode number used can match the number of the inode
+		   in the base or storage filesystem, making it a little
+		   easier for the user to track important information.
+		b) in order to properly perform other operations (such as
+		   removals and renames) on the base filesystem, this tech-
+		   nique will most likely be needed anyway.
+
+	    (completed Tue Sep 16 09:52:28 EDT 1997)
+
+	15. (entered: Wed Sep 10 21:46:06 EDT 1997)
+	    Determine if it is necessary to "lock" the directory entry
+	    structures so that ovlfs_remove_dirent() will not free the
+	    structure while it is still in use.
+
+	    (verified Thu Feb 26 11:18:29 EST 1998; the directory's inode
+	     will be locked to prevent other access to its directory listing
+	     during the update.  It is only required that the directory
+	     listing only be accessed through a VFS inode.)
+
+*	16. (entered: Sat Sep 13 22:11:27 EDT 1997)
+	    Clean up the strange circular logic that lead to the function
+	    ovlfs_stg_read_ino.
+
+	17. (entered: Sun Sep 14 00:18:58 EDT 1997)
+	    Make certain that directories created with ovlfs_make_hierarchy
+	    have the correct ownership.
+
+	    (completed Tue Sep 16 09:51:49 EDT 1997)
+
+	18. (entered: Sun Sep 14 22:59:30 EDT 1997)
+	    Complete ovlfs_rename so that the storage inode refers to the
+	    new storage file when copy_file must be used, and so that the
+	    name and parent directory of the result are updated in the
+	    storage inode.  ALSO: make sure that the file is not being copied
+	    when it already exists in the storage filesystem.
+
+	    FURTHER: make sure that no inode is left marked but unused.
+
+	    (completed Tue Sep 16 08:49:51 EDT 1997; removed use of copy_file
+	     on a rename.  It is not necessary to have the storage file-
+	     system store all of the changes to files & inodes.)
+
+	19. (entered: Fri Sep 19 15:05:05 EDT 1997)
+	    Make certain that it is alright to always call the base filesystem
+	    inode's open() when the inode only exists in the base fs.  This is
+	    the current operation of the ovlfs_open() call.
+
+	    (verified Thu Feb 26 11:19:58 EST 1998; the open call does not
+	     make any changes to the file. Changes to the file's contents may
+	     only be done through the write() method.)
+
+	20. (entered: Sun Sep 21 14:11:20 EDT 1997)
+	    Add reference to storage directories created from the overlay
+	    fs directory inodes when creating the inodes with
+	    ovlfs_make_hierarchy.
+
+	    (completed Fri Feb 27 14:32:25 EST 1998)
+
+	21. (entered: Sat Feb 21 13:54:54 EST 1998)
+	    Rename all references to the overlay fs (this filesystem) to
+	    pseudo fs in the code and comments to remove any confusion.
+	    (completed Tue Mar 10 10:19:21 EST 1998)
+
+	22. (entered: Fri Feb 27 14:31:49 EST 1998)
+	    Check the update of the mtime, ctime, and atime values.
+
+	    (completed Mon Mar  9 22:48:45 EST 1998; note that the updates are
+	     not entirely clear to me, so they may not truely be complete.)
+
+	23. (entered: Fri Feb 27 23:53:24 EST 1998)
+	    Determine when to set the super block's s_dirt so that sync()
+	    will call write_super().  This is basically any time that inode
+	    information changes.
+
+	    (completed Tue Mar 10 10:22:31 EST 1998; 
+
+	24. (entered: Sat Feb 28 12:47:23 EST 1998)
+	    Determine whether to always write out the superblock on unmounting
+	    the filesystem, or only when it is marked as dirty.
+
+	25. (entered: Sat Feb 28 15:10:21 EST 1998)
+	    Make sure that the rename method is alright in case the new and
+	    old directories are in different filesystems (i.e. the storage
+	    fs contains a mount point that is crossed).
+
+	    (completed Sun Mar  8 22:48:11 EST 1998)
+
+	26. (entered: Sat Feb 28 15:12:49 EST 1998)
+	    Decide whether to resolve the full path of the storage file on
+	    setup or not.  If the full path is not resolved, the storage file
+	    will get written relative to the current directory of the process
+	    in which it is written.
+
+	    (resolved: Mon Mar  2 17:40:36 EST 1998; on mounting the
+	     filesystem, obtain the inode for the storage file and maintain
+	     it as long as the filesystem is mounted.)
+
+	27. (entered: Sun Mar  1 11:10:15 EST 1998)
+	    Determine if it is possible to have ovlfs_stg_write_super() succeed
+	    even if called from user space; the open fails if the user does
+	    not have the necessary permission.
+
+	    (resolved: Mon Mar  2 17:40:36 EST 1998; same resolution as #26
+	     above; keep the inode for the file)
+
+	28. (entered: Thu Mar  5 10:34:58 EST 1998)
+	    Update the root inode's attributes from the attributes of the
+	    storage filesystem's root, or if the storage filesystem's root is
+	    not defined, the base filesystem's root inode.
+
+	    (completed Tue Mar 10 18:23:51 EST 1998)
+
+	29. (entered: Tue Mar 17 13:27:21 EST 1998)
+	    Determine all of the locations in the source where the kernel
+	    may cause the process to sleep in order to make sure that inodes
+	    are not referenced improperly after calling ovlfs_use_inode().
+
+	30. (entered: Tue Mar 17 13:32:36 EST 1998)
+	    Add "magic" numbers to the superblock and inode information
+	    structures in order to make sure that the structures are valid.
+
+	31. (entered: Fri Mar 27 09:22:08 EST 1998)
+	    Make sure the name attribute of the special information structure
+	    is allocated and freed as needed.
+
+	32. (entered: Fri Mar 27 14:08:22 EST 1998)
+	    Check wether the ovlfs_stg1_map_inode should update the inode's
+	    information structure, or if the overlay filesystem should do it.
+
+	33. (entered: Mon May 18 22:47:18 EDT 1998)
+	    Check if the copying of a base filesystem file with one name to a
+	    file of another name, due to multiple links to the same file,
+	    causes the file to show up as a new file in the overlay filesystem.
+
+	34. (entered: Fri Sep  4 20:15:30 EDT 1998)
+	    Update the link count of directories without "recursively" updating
+	    directory contents.

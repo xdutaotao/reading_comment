@@ -1,0 +1,208 @@
+				Overlay Filesystem
+
+========
+ABSTRACT
+========
+
+   Welcome to the overlay filesystem.  
+
+   The overlay filesystem is a pseudo filesystem that allows users to work with
+files from another filesystem without affecting it.  The original intent was to
+allow modifications to a CD-ROM filesystem.
+
+   NOTE: all of the documentation provided here assumes that the filesystem is
+compiled with its default configuration, unless otherwise noted.
+
+
+===========
+DESCRIPTION
+===========
+
+   Be warned that this document is not entirely thought-out and is a little
+incoherent.  This should be improved in the near future.
+   
+   The standard Unix concept of a filesystem is that it contains a hierarchy
+of files and directories and is mounted at a single point within the overall
+filesystem.  The VFS (Virtual File System) implementation supports this view.
+
+   The overlay filesystem provides a "mirror" of files in a mounted filesystem
+which users can access normally, except that all modifications to the mirror
+are stored on the side so that the original filesystem, referred to as the Base
+Filesystem, is unaffected.  All modifications to inode attributes, such as the
+owner and permissions, are saved by the overlay filesystem in its own storage.
+All modifications to the contents of files and directories are stored in
+another location, as specified when mounted.  NOTE: the base filesystem is not
+entirely safe.  See the WARNINGS section below for more information.
+
+   When an overlay filesystem is mounted, it needs to be given two paths.  The
+first path is the location of the root of the Base Filesystem.  The second path
+is the location of the root of the filesystem referred to as the Storage
+Filesystem.  The storage filesystem is used to store modifications to
+the contents of files and directories in the Base Filesystem.  Note that these
+directories do NOT have to be the actual root of the filesystems they belong
+to.
+
+   The contents of the overlay filesystem's directories is a union of the set
+of files in the base and storage filesystems.  When a directory is read for
+the first time, its contents are determined by comparing the names of the files
+found in the other filesystems directories.  Files with the same name are
+considered to be the same file, and the file in the storage filesystem takes
+precedence over, and hides, the one in the base filesystem.
+
+   When new files are created, they are only created in the storage filesystem.
+Also, any modifications to the contents of regular files in the base file-
+system cause the entire file to be copied into the storage filesystem.  When
+the file is copied, it may be copied with the name of any of the links that
+refer to the file - not just the name by which the file was opened.
+
+Whenever a file needs to be created in the storage filesystem, and the storage
+filesystem directory corresponding to the overlay filesystem directory does not
+exist, it is created; the entire hierarchy is created as necessary.
+
+
+=======
+EXAMPLE
+=======
+
+   Take the base and storage filesystems shown below.  The result of overlaying
+the storage filesystem over the base filesystem is shown under the overlay
+filesystem.
+
+
+			  Example Base Filesystem
+
+		/lib
+	/	/mnt
+		/usr	/usr/local
+			/usr/bin
+
+
+			Example Storage Filesystem
+
+		/usr	/usr/bin
+	/		/usr/frogs
+		/usr2
+
+
+			      Overlay Filesystem
+
+		/lib
+	/	/mnt
+		/usr	/usr/local
+			/usr/bin
+			/usr/frogs
+		/usr2
+
+
+
+   The attributes of the /usr, /lib, and /usr2 directories in the overlay file-
+system are taken from the storage filesystem, while the /lib directory's
+attributes are taken from the base filesystem.  The contents of the overlay
+filesystem's root directory are lib, mnt, usr, and usr2.  The usr and usr2
+directory attributes are the same as those in the storage filesystem while the
+directory attributes of lib and mnt are the same as those in the base
+filesystem.  Likewise, the usr/bin and usr/frogs directory attributes are the
+same as those in the storage filesystem while the usr/local directory
+attributes are the same as those in the base filesystem.
+
+   The file contents of the root, usr, and usr/bin directories is the union
+of the files in both the storage and base filesystems.  However, the file
+contents of the lib, mnt, and usr/local directories are the same as the
+contents of those directories in the base filesystem while the contents of the
+usr/frogs and usr2 directories are the same as the contents of those
+directories in the storage filesystem.
+
+   If a file were to be created in the lib directory, the lib directory would
+be created in the storage filesystem with the same attributes as the same
+directory in the base filesystem, and the file would then be created in the
+storage filesystem as well.  If the directory failed to be created in the
+storage filesystem, this error would be returned for the system call that
+attempted to create the file.
+
+=======
+HISTORY
+=======
+
+   The original idea under which the overlay filesystem was designed was to
+allow changes to a read-only filesystem.  Due to the need to have a place to
+store updates, the idea of overlaying one directory tree with another took
+place.  This is how the overlay filesystem works.  All files in the storage
+filesystem take precedence over those in the base fileystem, including all
+attributes of the inodes (owner, permissions, etc).
+
+   Another goal of this filesystem implementation is to allow a read-only
+filesystem, specifically a cdrom, to be mounted as the root filesystem.  The
+benefits include being able to create a disaster recovery cd and saving disk
+space.
+
+========
+WARNINGS
+========
+
+	- Files in the base filesystem may be updated by memory mapping the
+	  files with MAP_WRITE and MAP_SHARED, unless the module is compiled
+	  with the PROTECT_MMAP_WRITE flag.  However, with the flag on, files
+	  in the base filesystem will fail to be mapped for shared writing even
+	  though files in the storage filesystem will successfully map in this
+	  case.  By default, the compiler flag is set on.
+
+	- If the base filesystem is changed directly (i.e. not through the use
+	  of the overlay filesystem), then the changes could result in strange
+	  errors from the pseudo filesystem, including files that are not
+	  really there, files that are shorter or longer than they say they
+	  are, and so on.  In spite of this, the overlay filesystem should not
+	  crash or cause any corruption due to these errors.
+
+	- All of the storage of inode information for the overlay filesystem is
+	  maintained in kernel memory.  Therefore, if the base and/or storage
+	  filesystems are very large, the kernel may slow down and cause long
+	  delays.
+
+	- The access and change times of inodes in the base filesystem will be
+	  affected through the use of the overlay filesystem.  However, since
+	  no updates to regular files or directories can occur, the
+	  modification times of these inodes should remain unchanged.
+
+	- The contents of directory and regular files are handled by the
+	  overlay filesystem; the contents of other types of files in the Base
+	  Filesystem may be accessed directly through the use of the overlay
+	  filesystem.  For these files, such as device nodes and named pipes,
+	  the file operations are simple pass-through operations.
+
+	  In spite of this, any changes to the inode attributes of these files
+	  are still maintained by the overlay filesystem.
+
+	- If a directory is removed through the use of the magic directory or
+	  the storage filesystem, removing, or otherwise accessing the
+	  directory may cause warnings or errors from the driver for the
+	  overlay filesystem.  These warnings or errors should not cause any
+	  real problems, but it is best to avoid them as much as possible.
+
+	- Since the storage filesystem may contain mount points, and the
+	  overlay filesystem presents a single device number for all files it
+	  contains, the move program, mv, fails when attempting to move a
+	  file, which exists in the storage filesystem, across a mount point.
+
+	- The magic directories may be used to undermine a chroot() system
+	  call, thereby allowing a user access to the system's entire
+	  filesystem.  If security is an issue, turn off the magic
+	  (-o nomagic).
+
+	- The access times of inodes in the base filesystem may be affected.
+	  This is especially true when reading a file that only exists in the
+	  base filesystem.
+
+	- Each inode in the overlay filesystem may need to use one or two other
+	  inodes (from the base and storage filesystems).  The VFS is not
+	  designed to support this, but it should not break the VFS.  If there
+	  is a need to have many users working with overlay filesystems, it may
+	  be necessary to increase the maximum number of inodes in the kernel.
+
+=====
+NOTES
+=====
+
+   In order to provide seamless interaction, the overlay filesystem contains
+much code which duplicates the VFS.
+
+[version @(#) Description 1.3]

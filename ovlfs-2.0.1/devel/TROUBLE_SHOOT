@@ -1,0 +1,32 @@
+- New Files Missing: if a directory entry is added to the base or storage
+  filesystem, the overlay filesystem must update the directory to see the
+  new file(s).  This means that the directory's inode must be released from
+  kernel memory and then be re-read (see FORCING AN INODE TO BE RE-READ
+  below).
+
+- ls: directory empty or missing? (output is "ls: .").  This was a misleading
+  problem.  It turns out to have been caused by the recursive read_directory
+  problem which caused a kernel stack overflow.
+
+- getcwd(): unable to determine the current working directory.  This is caused
+  when getcwd() is unable to find the current directory's entry in the parent
+  directory (..), or the parent directory is not correct, such as when it is
+  the same as the current directory.
+
+
+FORCING AN INODE TO BE RE-READ:
+
+	1. The easiest way to force an inode to be re-read is to unmount
+	   the filesystem and mount it again.  Otherwise,
+
+	2. Make sure that the inode is not in use by any process; for
+	   a directory, make sure that no process has the directory, or
+	   a subdirectory of the directory, as its current working
+	   directory.  And,
+
+	3. Try to read many inodes somewhere else on the system (e.g. by
+	   running "ls -R /usr/lib") - just make sure the inode you want
+	   re-read is not in the list.
+
+	NOTE: The latter process may not work; it all depends on whether
+	      the kernel releases the inode or not.

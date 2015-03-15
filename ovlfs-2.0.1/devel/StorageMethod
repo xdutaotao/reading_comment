@@ -1,0 +1,758 @@
+ABSTRACT:
+	This file contains a description of the Overlay Filesystem's "Storage
+	Method" and its use.
+
+CONTENTS:
+	- STORAGE METHOD
+		+ DESCRIPTION
+		+ GOALS
+		+ USE
+
+	- STORAGE OPERATIONS
+		+ DESCRIPTION
+		+ REQUIREMENTS
+
+
+				 ==============
+				 STORAGE METHOD
+				 ==============
+
+DESCRIPTION:
+	The Overlay Filesystem's (ovlfs) storage operations define an interface
+	between the core of the ovlfs and the physical storage used by the
+	ovlfs.  In general, it does not make sense to add such an interface to
+	filesystems since they are the physical interface for the VFS.
+	However, the ovlfs acts like the VFS (Virtual File System) than a
+	regular filesystem, and this behavior requires much complicated code.
+
+	In order to facilitate good programming and to allow flexibility in
+	the actual physical storage of the ovlfs' information, the "Storage
+	Method" was created.  See the list of goals in the "GOALS" section of
+	this document for more information on the reason for the definition
+	of the Storage Method.
+
+GOALS:
+	Below is a list of the goals that are supported by the Storage Method:
+
+		1. Allow additional storage methods to be developed with
+		   minimal or no modification to the overlay filesystem.
+
+		2. Separate the maintenance of the core of the overlay
+		   filesystem from the maintenance of the storage methods so
+		   that they can be modified independent of one another.
+
+		3. Support multiple physical storage implementations in order
+		   to support different uses of the ovlfs.  For example, using
+		   a block device is best if the ovlfs needs to be mounted as
+		   the root filesystem, but using a blocked file for storage
+		   may be more appropriate when the ovlfs is not the root
+		   filesystem and there is a desire or need not to allocate a
+		   fixed amount of disk space to it.
+
+USE:
+	Below is a brief description of the use of the storage method interface
+	with the Overlay Filesystem.  In order to provide a thorough picture,
+	the interaction of the VFS with the ovlfs is also depicted.  Note that
+	the diagram below shows the "calling" order of operations with the
+	caller shown to the left and the called operation shown to the right.
+
+	Note that this diagram is not complete because it only depicts some of
+	the function calls and in many cases abstracts a sequence of functions
+	into a single "operation".
+
+		VFS mount
+			ovlfs read super
+				storage method: Init()
+				iget()                    # for the root inode
+					ovlfs read inode (see below)
+
+		VFS get inode
+			ovlfs read inode                # only if not in cache
+				ovlfs prepare inode
+				storage method: Read_inode()
+				ovlfs read directory (see below)
+
+		VFS put inode
+			ovlfs put inode      # only when inode is unreferenced
+				ovlfs write inode                   # if dirty
+					storage method: Sync()
+				storage method: Clear_inode()     # if defined
+				VFS clear inode
+				ovlfs free inode info
+
+		VFS statfs
+			ovlfs statfs
+				storage method: Statfs()          # if defined
+
+		VFS sync
+			ovlfs write super
+				VFS lock super
+				storage method: Sync()
+				VFS unlock super
+
+		VFS write inode
+			ovlfs write inode
+
+		VFS unmount
+			ovlfs write super         # if the superblock is dirty
+				storage method: Sync()
+			ovlfs put super
+				storage method: Release()
+
+	[symlink]
+		VFS follow link
+			ovlfs follow link
+				storage method: Read_symlink()    # if defined
+
+		VFS read link
+			ovlfs read link
+				storage method: Read_symlink()    # if defined
+
+		VFS symlink
+			ovlfs symlink
+				storage method: Set_symlink()     # if defined
+
+TBD: finish these:
+
+	[directory]
+		VFS mknod
+		VFS mkdir
+		VFS link
+		VFS lookup (dir)
+		VFS creat
+		VFS readpage
+		VFS rename
+		VFS rmdir
+		VFS permission
+		VFS truncate
+		VFS unlink
+
+		VFS open file
+		VFS read file
+		VFS write file
+		VFS close file
+
+
+			       ==================
+			       STORAGE OPERATIONS
+			       ==================
+
+DESCRIPTION:
+	Each of the storage operations has a well defined function interface
+	and set of responsibilities.  Below is a list of the operations that
+	are defined and a description of its purpose.  See the "REQUIREMENTS"
+	section below for a more thorough definition of the function interface
+	and the requirements for each operation.
+
+
+TBD: determine where and how to explain mappings as well as other ovlfs-
+     specific information.
+
+
+		OPERATION	PURPOSE
+		=========	=======
+		Init		Prepare to read inodes and retrieve the root
+				inode of the directory.  This generally
+				involves reading information from physical
+				storage and updating information in the super
+				block.
+
+		Sync		Update the information in physical storage for
+				the filesystem.  This generally includes all
+				information that is not otherwise updated by
+				the inode operations.
+
+		Release		Release all of the resources that this storage
+				operation has allocated as part of unmounting
+				the filesystem.  This generally involves
+				resources allocated by Init().  This operation
+				should NEVER release memory allocated by the
+				ovlfs on its behalf.  For example, this would
+				include the ovlfs' super block information
+				structure.
+
+		Statfs		Return information on the amount of available
+				and used storage space and inodes for the
+				filesystem.  In other words, fill in most of
+				the fields of the statfs structure.
+
+		Add Inode	Allocate a new inode in the physical storage
+				and generate a new, unique inode number for it.
+				Set the initial attributes for the inode, in
+				the physical storage, to the appropriate values
+				based on the reference inode given.
+
+		Read Inode	Prepare the inode to be used to access the file
+				or directory it refers to.  This generally
+				involves reading the inode's attributes from
+				physical storage.
+
+		Clear Inode	Release the resources allocated for the given
+				inode.  In general, this refers to resources
+				allocated by "Read Inode" or "Add Inode"
+				operations.  The physical storage space for the
+				inode should only be released if the link count
+				for the inode is zero and the storage method
+				does not need the inode anymore.  There are no
+				other operations defined that the ovlfs will
+				use to trigger the removal of inodes from
+				physical storage; this is up to the storage
+				method.
+
+		Update Inode	Write the inode's attributes to physical
+				storage.
+
+		Map Inode	Add a new mapping from the given inode, from
+				the specified filesystem (base or storage),
+				to the ovlfs inode given.
+
+		Map Lookup	Find the inode number of the ovlfs inode that
+			 	corresponds to the given inode from the specified
+				filesystem (base or storage).
+
+		Number Dirent	Return the number of entries in the given ovlfs
+				ovlfs directory.  Either the total number of
+				directory entries, or only the number of
+				entries that are not deleted, must be returned
+				as requested.
+
+		Read Directory	Return the directory entry whose position is
+				specified.  As of this writing, the position
+				always starts at one and increases by one for
+				each entry.  This may change before V1.1 of
+				the ovlfs is released.
+
+		Lookup Directory Entry
+				Find the inode number of the ovlfs inode for
+				the entry in the ovlfs directory and whose name
+				matches the one specified.  The ovlfs
+				directory's inode is given,
+
+		Add Directory Entry
+				Add a new entry to the ovlfs directory, whose
+				inode is given, with the specified name and
+				inode number.  Be careful to replace deleted
+				entries.
+
+		Rename Directory Entry
+				Change the name of the specified entry in the
+				ovlfs directory, whose inode is given, to the
+				new name specified.  This operation will ONLY
+				be used if the source and target are both in
+				the SAME directory (of the ovlfs).
+
+		Unlink Directory Entry
+				Remove the named directory entry from the ovlfs
+				directory, whose inode is given.  NOTE: this
+				operation is responsible for keeping track of
+				deleted entries so that they will not reappear
+				the next time the filesystem is mounted.
+
+		Read File	(optional) Read a sequence of bytes from the
+				given file.  This operation only needs to be
+				defined if the storage method is keeping
+				portions of the file's contents in its own
+				physical storage.  NOTE: as of this writing,
+				this interface is still under development; the
+				interface WILL CHANGE.
+
+		Write File	(optional) Write a sequence of bytes to the
+				given file.  This operation only needs to be
+				defined if the storage method is keeping
+				portions of the file's contents in its own
+				physical storage.  NOTE: as of this writing,
+				this interface is still under development; the
+				interface WILL CHANGE.
+
+		Set Symlink	(optional) Set the path for the symbolic link,
+				whose inode is given, to the specified path.
+				The main reason a storage method might want to
+				implement this operation is to allow an ovlfs
+				to be mounted without a "Storage Filesystem".
+
+		Read Symlink	(optional) Set the path for the symbolic link,
+				whose inode is given, to the specified path.
+				The main reason a storage method might want to
+				implement this operation is to allow an ovlfs
+				to be mounted without a "Storage Filesystem".
+
+REQUIREMENTS:
+	In order to develop a Storage Method that works properly with the
+	ovlfs, there are some requirements that the Storage Method's
+	implementation must meet.  Here are some general requirements for
+	the Storage Method:
+
+		1. The following operations are required for all of the ovlfs'
+		   functions to operate properly (e.g. mount the fs, see files,
+		   read/write files, etc.):
+
+			a. Init
+			b. Sync
+			d. Add Inode
+			e. Read Inode
+			f. Update Inode
+			g. Map Inode
+			h. Map Lookup
+			i. Lookup Directory Entry
+			j. Add Directory Entry
+			k. Rename Directory Entry
+			l. Unlink Directory Entry
+
+		   Any operations not listed here exist to provide additional
+		   or better functionality than would otherwise be available.
+
+		2. The following operations are the bare minimum required for
+		   the ovlfs to operate at all (i.e. mount a filesystem and see
+		   files):
+
+			a. Init
+			b. Read Inode
+			c. Map Lookup *
+			d. Read Directory
+
+		   * maybe you could get away without this.
+
+		3. The storage method must exist in the list of registered
+		   storage methods.  This can be accomplished by hard coding
+		   the method into the ovlfs, but an easier method which
+		   provides better support for kernel modules, is to use the
+		   ovlfs_register_storage() function.
+
+		4. Once the storage method has been registered, the operations
+		   structure given should NOT be modified.  The ovlfs does not
+		   provide a method by which different inodes can have
+		   different methods associated with them.  The reason this
+		   support is not provided is that the storage operations
+		   have access to all of the information they need to make
+		   decisions on how to process an operation.
+
+		5. If the storage method is loaded as a module, it must update
+		   its use count each time the Init operation is successful
+		   and decrement it each time the Release operation is
+		   successful.  Otherwise, the user might be able to remove
+		   the module while it is in use, or not remove it while it is
+		   no longer in use.  The former being worse since a reference
+		   to the module after it is unloaded will cause kernel panics,
+		   data corruption, hang ups, or the like.
+
+		   Note that, if the release method is not successful, the
+		   system will need to be rebooted to recover regardless.
+
+	Below is list of the Storage Method operations and the requirements
+	for each one.
+
+
+	o Init Operation
+
+		1. must prepare to serve and add inodes to the filesystem. This
+		   usually includes:
+
+			a. retrieve information from physical storage and
+			   update the super block information for the storage
+			   method.  This includes verifying that the physical
+			   storage is valid for the filesystem.
+
+			b. setup internal data structures as needed.  Memory
+			   may be allocated, as needed; any allocated memory
+			   will need to be explicitly released later, so make
+			   sure it can be found.
+
+		2. must ensure that the root directory for the filesystem
+		   exists.  It may create the root directory for the filesystem
+		   if one does not exist, as desired.
+
+		   Note that it may be desirable in many cases, especially
+		   for those storage methods that work with existing physical
+		   storage, to require the use of another program to prepare
+		   (i.e. format) that phsyical storage.  This way, attempting
+		   to mount the wrong device will not destroy the information
+		   already on it.  This is up to the implementor of the storage
+		   method.
+
+		3. must NOT change the super block's u structure's immediate
+		   elements.  The u.generc_sbp pointer is initialized by the
+		   ovlfs before this operation is performed.  The storage
+		   method should really try to work only with its own area
+		   within the super block's ovlfs information structure, as
+		   described next.
+
+		4. must prepare the information in the super block's
+		   information structure's u element as it needs.  Here is one
+		   way to access that element, where sb is the pointer to the
+		   super block structure:
+
+			ovlfs_super_info_t *s_info;
+
+			s_info = (ovlfs_super_info_t *) sb->u.generic_sbp;
+
+			/* now access s_info->u */
+
+		5. must return an error if the filesystem can not be mounted
+		   properly for any reason.  MUST release any resources this
+		   operation allocates and undo any work it performs when an
+		   error occurs.  In other words, it must cleanup itself on
+		   failure.  The Release operation will NOT be called if this
+		   operation returns an error.
+
+		6. must return >= 0 on success.  Zero is recommended.  Must
+		   return < 0 on failure; the return code is otherwise unused.
+
+
+	o Sync Operation:
+
+		1. must update the physical storage for the filesystem. This
+		   usually means writing the super block itself and perhaps a
+		   few other pieces of information.
+
+		2. any physical storage information that would not be updated
+		   by the update inode operation, or any other operation, must
+		   be written by this operation.
+
+		3. does NOT have to update dirty inodes.
+
+		4. does NOT have to force the physical layer to update.
+
+		5. should return >= 0 on success; 0 is recommended.  Should
+		   return < 0 if an error occurs.  However, at the time of
+		   this writing, the return code is ignored.  It may always
+		   be ignored since it does not seem there is much the caller
+		   can do, at least from the point of view that the sync
+		   operation could attempt the same things...
+
+		NOTE: the File Storage method only writes to its storage file
+		      by writting the entire file.  Therefore, this operation,
+		      as written for the File Storage Method, actually writes
+		      all of the inode information as well.
+
+	o Release Operation:
+
+		1. must free the memory used by the storage.  No other
+		   operations for this filesystem will be called after this
+		   one is called until the Init() operation is called again.
+		   So, don't leave anything behind ;-).
+
+		2. must never free the super block's information structure
+		   iself.  It should only release the storage method's members
+		   of the ovlfs super block information structure's u element,
+		   iff they were allocated by the storage method.
+
+		3. should return >= 0 on success; 0 is recommended.  Should
+		   return < 0 if an error occurs.  However, at the time of
+		   this writing, the return code is ignored.  It probably will
+		   always be ignored.
+
+
+	o Statfs Operation:
+
+		1. does NOT need to copy data between kernel space and user
+		   space (memcptofs, or the like).
+
+		2. should set the members of the given statfs structure to
+		   indicate the amount of free and used space and inodes.
+
+		3. should return >= 0 on success; 0 is recommended.  Should
+		   return < 0 if an error occurs.  However, at the time of
+		   this writing, the return code is ignored.  It probably will
+		   always be ignored.
+
+
+	o Add Inode Operation:
+
+		1. must allocate physical storage for a new inode and allocate
+		   a unique inode number (within the filesystem) for it.
+
+		2. must initialize the inode's attributes in physical storage
+		   so that the inode will remain in storage until it is at
+		   least read one time.
+
+		3. must set the updated indicator of the inode to indicate that
+		   the inode is not yet updated.
+
+		4. must NOT attempt to obtain the VFS inode for the inode (e.g.
+		   by using iget).  Such an attempt could cause a recursion
+		   that results in a kernel stack overflow and corruption.
+
+		5. must store the inode number of the new inode in the given
+		   address.
+
+		6. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOSPC).
+
+
+	o Read Inode Operation:
+
+		1. must prepare to allow the given inode to be used to access
+		   the directory or file it refers to.  This usually involves
+		   updating the storage method's information in the ovlfs'
+		   inode information structure for reference.
+
+		2. must set the inode's attributes, such as owner and mode.
+
+		3. must NOT change the inode's number or device. NEVER NEVER
+		   NEVER.
+
+		4. must set the base and storage inode mappings in the inode's
+		   information structure's "s" element.  Actually, the entire
+		   "s" element must be filled in.
+
+		5. must set the inode's reference name, if defined.  The
+		   reference name is stored in the ovlfs inode information
+		   structure's s element (s.name and s.len).  If set, the
+		   s.name MUST point to allocated (kmalloc'ed) memory.  The
+		   reference name is the name that is used to create copies
+		   of regular files into the "Storage Filesystem" from the
+		   "Base Filesystem".
+
+		6. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOENT).
+
+	o Clear Inode Operation:
+
+		1. must release any resources used by the storage method for
+		   the inode that are not released by the Release() or other
+		   operation.  Note that no other storage operation will be
+		   performed on the inode until it is read again with the
+		   Read_inode() operation.
+
+		2. can release the physical storage for the inode AS
+		   APPROPRIATE.  This operation is called for every inode just
+		   before it is removed from the inode cache, not only inodes
+		   that have a link count of zero.
+
+		3. must remove all mappings for the inode IF AND ONLY IF the
+		   inode is removed from physical storage.
+
+		4. should return >= 0 on success; 0 is recommended.  Should
+		   return < 0 if an error occurs.  However, at the time of
+		   this writing, the return code is ignored.  It probably will
+		   always be ignored.
+
+
+	o Update Inode Operation:
+
+		1. must save the attributes of the inode to physical storage.
+		   If the storage method caches data for writing, then the
+		   data in the cache should be written to disk.
+
+		2. must NOT "unprepare" the inode.  This inode may continue to
+		   be used normally until the clear inode operation is
+		   performed.
+
+		3. should not update the dirty attribute of the inode; that is
+		   handled by the ovlfs.
+
+		4. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOENT).
+
+
+	o Map Inode Operation:
+
+		1. must remember the mapping from the given inode, in the
+		   base or storage filesystem, to the ovlfs inode given.  Also,
+		   must remember whether the mapping is for the base or
+		   storage filesystem.  Note that a complete mapping includes
+		   a source device number and inode number as well as the
+		   target (ovlfs) inode number, and nothing else.
+
+		2. must make certain that this mapping will be remembered for
+		   later mounts.  The best way to handle this is to use an
+		   element in the ovlfs super block information structure's
+		   u element to track the mappings.  Then, the mappings can
+		   be stored when the super block is updated.
+
+		3. must remember the mapping from the ovlfs inode to the
+		   specified inode also. (i.e. the mapping must be remembered
+		   in both directions). This information must be placed in the
+		   ovlfs inode by the Read Inode Operation at a later time.
+
+		4. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOENT).
+
+
+	o Map Lookup Operation:
+
+		1. must find the ovlfs inode that matches the device number and
+		   inode number of the given reference inode from the specified
+		   filesystem (base or storage).
+
+		2. must store the inode number of the ovlfs inode in the
+		   location whose address is given.
+
+		3. must return an error ( < 0 ) if the inode number is not
+		   updated.
+
+		4. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOENT).
+
+
+	o Number Dirent Operation:
+
+		1. must return the number of directory entries in the directory
+		   whose inode is given.
+
+		2. must include or exclude the number of removed directory
+		   entries in the directory, as requested.
+
+		3. must return a value of less than 0 if, and only if, an
+		   error occurs.  The value is interpreted as -1 * errno.
+
+
+	o Read Directory Operation:
+
+		1. must return unlinked directory entries with the directory
+		   entry flag, OVLFS_DIRENT_UNLINKED, set.  The flag is set
+		   in the flags element of the directory structure whose
+		   pointer must be returned.
+
+		2. must only return a NULL directory entry pointer as the
+		   last entry in the directory; therefore, it is generally
+		   easier to just return unlinked directory entries as
+		   indicated in (1) above than to skip them.
+
+		   In other words, all directory entries must be numbered
+		   sequentially so that no positions from 1 through n are
+		   missing, and each position remains the same between
+		   calls (except for actual changes to the directory, of
+		   course).
+
+		3. must return the pointer to a structure of type
+		   ovlfs_dir_info_t by storing it in the pointer given, but
+		   only if successful.  It may set the pointer to NULL on
+		   error, although this is not required.
+
+		4. the ovlfs will NOT release the memory used by the returned
+		   structure or any of its elements.  Therefore, it is
+		   important that this operation make certain that the pointer
+		   returned will be valid until the inode is no longer in
+		   use or it can be certain, through some other method, that
+		   the ovlfs is done with it.  The inode is no longer in use
+		   when the Clear Inode operation is called.
+
+		5. must return the directory entries in the same order and
+		   positions at least until the directory is modified by an
+		   addition or removal of an entry.
+
+		6. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOENT).
+
+
+	o Lookup Directory Entry Operation:
+
+		1. must store the inode number of the ovlfs inode in the
+		   location whose address is given.
+
+		2. must not modify the name given.
+
+		3. must NEVER return deleted entries.
+
+		4. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOENT).
+
+
+	o Add Directory Entry Operation:
+
+		1. must add the entry, whose name and inode number are given,
+		   to the given directory so that it may be found later by the
+		   lookup operation.
+
+		2. must make certain that the entry is not marked as deleted,
+		   and that it replaces any deleted entry with the same name.
+
+		3. does not need to make any effort to find, validate, or
+		   otherwise modify the inode that the entry refers to.
+
+		4. must not modify the name given.
+
+		5. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOENT).
+
+		6. must set the inode's NO_BASE_REF flag, and the directory
+		   entry's RELINK flag when the new directory entry is
+		   replacing an unlinked entry.
+
+
+	o Rename Directory Entry Operation:
+
+		1. must change the name of the existing entry to the new name
+		   specified.  This may be accomplished by deleting the old
+		   entry and adding the new one, if that is appropriate; just
+		   don't forget to find the inode number first.
+
+		2. does not need to check the old name and new name to make
+		   sure they are different.
+
+		3. must track the old name as an unlinked directory entry.
+
+		4. must replace any unlinked entry whose name matches the new
+		   name with the entry.  The resulting entry must remain marked
+		   the same way the original was (which - should - always be
+		   "normal", but don't count on it).
+
+		5. must not modify either of the names given.  Also, must NOT
+		   reference the buffers given for the names; they will be
+		   lost or modified later.  Of course, must not free either
+		   buffer.
+
+		6. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOENT).
+
+
+	o Unlink Directory Entry Operation:
+
+		1. must mark the entry, whose name is specified, as removed.
+
+		2. must not modify the name given.
+
+		3. must return >= 0 on success (zero is recommended), or < 0
+		   on error.  The error code is interpreted as -1 * the errno
+		   value, so that is what should be returned (e.g. -ENOENT).
+
+
+	o Read File Operation:
+		TO BE DETERMINED
+
+
+	o Write File Operation:
+		TO BE DETERMINED
+
+
+	o Set Symlink Operation:
+		TO BE DETERMINED
+
+
+	o Read Symlink Operation:
+		TO BE DETERMINED
+
+
+
+				 ==============
+				 AUTHOR'S NOTES
+				 ==============
+
+1. The VFS/FS interface often appears to be circular.  For example, the read
+   superblock operation as defined in most filesystem's uses iget() to retrieve
+   the inode of the root directory for the filesystem itself.  The reason for
+   this apparent circular behavior is that the VFS provides many services on
+   behalf of the filesystem as well as providing the interface between the
+   real filesystem and user processes (and also the rest of the kernel).
+
+   It is a good idea for all filesystems to continue this method since changes
+   to the VFS's services will be picked up by the filesystem's if they use
+   the services.  Otherwise, changes to the VFS might require changes to the
+   filesystem.
+
+2. (or 1a?)  The Overlay filesystem/Storage Method interface also has behavior
+   that appears to be circular, similar to the VFS/FS interface.  The reasoning
+   is the same.
+
+
+[version @(#) StorageMethod 1.4]

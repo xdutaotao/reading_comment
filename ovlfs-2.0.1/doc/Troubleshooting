@@ -1,0 +1,61 @@
+General Troubleshooting Procedures
+
+	1. [ERROR MESSAGES] Use the /bin/dmesg program to view any error
+	   messages from the overlay filesystem.  All errors from the
+	   filesystem driver itself should start with "OVLFS:", while errors
+	   from the kernel lists source should start with "KLISTS:".  Note
+	   that these error messages are also written to the /var/adm/syslog
+	   file (at least that is where they go on my system).
+
+	2. [OUT OF SYNC] If the overlay filesystem becomes out of sync with
+	   the base and/or storage filesystems, the following can be attempted
+	   to get it back into sync:
+
+		a. unmount the overlay filesystem and mount it again
+
+		b. unmount the overlay filesystem, remove, or rename, the
+		   storage file and remount the overlay filesystem again.
+	   
+		c. if maintaining the attributes of files in the overlay
+		   filesystem is important, a backup may do the trick, but
+		   restored files will end up in the storage filesystem even
+		   if they were originally in the base filesystem only.  There
+		   is a need for a tool which backs up and restores attributes
+		   of files.
+
+	3. [EXT2 ERRORS] Errors from the ext2 driver, or any other driver of
+	   the base or storage filesystems, may be caused due to the fact that
+	   these drivers have been tested with the traditional VFS only.  The
+	   errors that I have run into were just warnings about removed files
+	   that were accessed due to the fact that their inodes were still in
+	   the inode hash tables.  In order to stop these errors, unmounting
+	   the filesystems and remounting them should help.
+
+	4. [CAN'T UNMOUNT] If any of the filesystems involved can not be un-
+	   mounted, the cause is most likely due to an inode that is marked
+	   as being in use.  Shutting down the machine will clear the problem,
+	   but the shutdown may be slow.
+
+	5. [CAN'T SHUTDOWN] If a shutdown of the machine will not complete,
+	   make certain to stop as much activity as possible, sync the disks
+	   (with the sync command), and turn the machine off.  When the machine
+	   is rebooting, the filesystems may need to be run through fsck, but
+	   if the disks were sync'ed, no data should be lost.
+
+	6. [STRANGE PROBLEMS] Since the overlay filesystem works with inodes
+	   from other mounted filesystems and uses other non-standard
+	   interactions with these filesystems, many commands may break when
+	   they would normally work.  This includes the mv command which fails
+	   to move a file through an overlay filesystem across a mount point in
+	   the storage filesystem.  These problems may be difficult to correct
+	   without modifying the affected programs, but finding another way to
+	   do the same thing may solve the problem.
+
+	7. [STORAGE FILE] If there is a problem with the storage file, such
+	   as being unable to mount the filesystem, the view_stg program may
+	   be used to view the contents of the storage file.  At this time,
+	   there is no program which can fix problems in the storage file, but
+	   its format is fairly simple.  If necessary, feel free to try and fix
+	   it.  It is perfectly safe to make copies of the storage file.
+
+[version @(#) Troubleshooting 1.2]

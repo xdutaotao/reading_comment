@@ -1,0 +1,184 @@
+    The following is a list of the options that may be specified when mounting
+an overlay filesystem.  Note that the base_root (or root) option MUST be
+specified, and that the storage_root needs to be specified for updates to
+work.  Under each option is the shortcut name of the option.
+
+
+	storage		- Turn on use of storage in kernel memory and in the
+	st		  storage file.  This is the default.
+
+	nostorage	- Turn off use of storage in kernel memory and in the
+	nost		  storage file.  THIS DOES NOT WORK YET.
+
+	maxmem		- Turn on checking of available memory before
+	mm		  allocating kernel memory for storage information.
+			  The check requires 10% of the total memory be
+			  available.  Testing shows that you are likely better
+			  off without this option.
+
+	xmnt		- Cross mount points in the base and storage
+	xm		  filesystems.  In other words, access the mounted
+			  filesystem at a mount point.  See the notes below.
+
+	noxmnt		- Do not cross mount points in the base and storage
+	noxm		  filesystems.  With this option, it is not possible
+			  for the accesses to the base or storage filesystems
+			  to cross into different filesystems.  This breaks
+			  the standard concept of a mount point, which causes
+			  the mount point directory to become unreachable.
+			  See the notes below.
+
+	updmntonly	- Only update the storage for the overlay filesystem
+	um		  when the filesystem is unmounted.
+
+	noupdmntonly	- Update the storage for the overlay filesystem
+	noum		  whenever appropriate.  This is the default.
+
+	base_root=<dir>, or
+	root=<dir>	- Set the root of the base filesystem to the specified
+	br		  directory.  This is the only way to specify the root
+			  of the base filesystem.
+
+	storage_root=<dir>, or
+	storage=<dir>	- Set the root of the storage filesystem to the
+	sr		  specified directory.  This is the only way to specify
+			  the root of the storage filesystem.
+
+	stg_file=<path>	- Set the path to the storage file for the filesystem
+	sf		  to the specified path.  Make certain the storage file
+			  is unique to the overlay filesystem.
+
+
+INODE MAPPING STORAGE OPTIONS (only if compiled with STORE_MAPPINGS set)
+
+	storemaps	- Store all mapping information from the storage and
+	ma		  base filesystems' inodes to the pseudo filesystem's
+			  inodes.
+
+	nostoremaps	- Do not store all mapping information from the storage
+	noma		  and base filesystems' inodes to the pseudo
+			  filesystem's inodes.
+
+	basemap		- Store the mapping information from the base
+	bm		  filesystem's inodes to the pseudo filesystem's
+			  inodes.
+
+	nobasemap	- Do not store the mapping information from the base
+	nobm		  filesystem's inodes to the pseudo filesystem's
+			  inodes.
+
+	stgmap		- Store the mapping information from the storage
+	sm		  filesystem's inodes to the pseudo filesystem's
+			  inodes.
+
+	nostgmap	- Do not store the mapping information from the storage
+	nosm		  filesystem's inodes to the pseudo filesystem's
+			  inodes.
+
+
+MAGIC OPTIONS (only if compiled with USE_MAGIC set)
+
+	hidemagic	- Hide the magic directories.  If set, the magic
+	hm		  directories will not show in directory listings,
+			  but they will still be accessable.
+
+	magic		- Turn on the magic directories and the hidemagic
+	mg		  option.  This is the default.
+
+	nomagic		- Turn off the magic directories.
+	nomg
+
+	basemagic	- Turn on the magic directory for accessing the base
+	mb		  filesystem's directories.
+
+	nobasemagic	- Turn off the magic directory for accessing the base
+	nomb		  filesystem's directories.
+
+	ovlmagic	- Turn on the magic directory for accessing the
+	mo		  storage filesystem's directories.
+
+	noovlmagic	- Turn off the magic directory for accessing the
+	nomo		  storage filesystem's directories.
+
+	showmagic	- Show the magic directories in the directory
+	ms		  listings.  Be careful with this option; commands
+			  such as "rm -r" will cause kernel errors -
+			  although they should not cause corruption.
+
+	smagic=<name>, or
+	magic=<name>	- Set the name of the magic directory for the storage
+	sn		  filesystem to the specified name.  The default name
+			  is "magic".
+
+	bmagic=<name>, or
+	magicr=<name>	- Set the name of the magic directory for the base
+	bn		  filesystem to the specified name.  The default name
+			  is "magicr".  Make sure this is different than
+			  the name of the storage magic directory.
+
+
+
+NOTES
+
+ 1. CROSSING MOUNT POINTS
+
+	   Since the overlay filesystem works with mounted filesystems, it is
+	possible that the base or storage filesystems may contain mount points
+	The standard behavior of mount points causes the mount point to be
+	hidden and inaccessible due to the mount.  This presents a problem for
+	the overlay filesystem because the kernel views the entire contents of
+	the filesystem as if it were on one device.
+
+	   One example of this problem is easy to see with the "mv" program. In
+	order to check if the move is crossing a mount point, the mv program
+	checks the devices of the directories involved in the move and, if they
+	are the same, it only attempts to perform a rename() operation.  If
+	they are different, the mv program performs a copy followed by an
+	unlink() of the original file.  This fails in the overlay filesystem
+	if a mount point in the storage filesystem is crossed because the
+	device of all the directories in the overlay filesystem is always the
+	same (for a single mount).
+
+	   The overlay filesystem's implementation allows the administrator
+	of the filesystem to decide whether the overlay filesystem should
+	cross mount points as usual or to ignore the mount points.  Allowing
+	mount points to be crossed in the storage filesystem would allow
+	more than one physical device to be used to store files for a single
+	overlay filesystem.  Also, the base filesystem would look like a
+	mirror of the original directory tree.
+
+
+ 2. ROOT DIRECTORY OF THE BASE AND STORAGE FILESYSTEMS
+
+	   The root directory of the base filesystem and the storage filesystem
+	may be anywhere in the directory tree at the time of the mount.  The
+	directories will be determined before the overlay filesystem is
+	actually mounted.  So, for example, one of the root directories may
+	be the same directory as the mount point of the storage filesystem.
+
+ 3. STORAGE OF INODE MAPS
+
+	   The storage of inode maps allows the overlay filesystem to make
+	sure that changes to inode information for inodes in the base
+	filesystem are matched properly when the overlay filesystem is
+	umounted and remounted.  The problem with using inode maps occurs
+	when the base or storage filesystem is modified out from under the
+	overlay filesystem.  If an inode is reused in one of the real
+	filesystems, through an unlink() followed by a linking op, such as
+	mkdir(), the new file will get mapped to an existing overlay filesystem
+	inode.  This means the information for the base inode will not be
+	correct.
+
+	   On the other hand, if inode maps are not stored, and a file in the
+	base filesystem or storage filesystem is renamed, then the changes made
+	to that file through the overlay filesystem will be lost.
+
+	   The inode mappings are used to find overlay inode information when
+	the overlay filesystem uses the readdir() operation of the real
+	filesystems to determine a directory's contents.  The inode information
+	for the overlay filesystem is only updated from the real inodes'
+	information if the overlay filesystem's information is not already
+	set, or an inode from the storage filesystem is taking precedence
+	over one in the base filesystem.
+
+[version @(#) Options 1.1]

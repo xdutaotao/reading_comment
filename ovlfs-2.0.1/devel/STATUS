@@ -1,0 +1,19 @@
+The current status of development on the overlay filesystem:
+
+============================
+Fri Aug 22 10:09:58 EDT 1997
+============================
+	1. Completed step 1 of the "Initial Implementation Strategy".
+
+	2. Started step 2; already have the ability to list the contents of
+	   a (single) directory in the result and the ability to "return"
+	   an inode from the root filesystem.
+
+============================
+Sun Aug 31 00:04:09 EDT 1997
+============================
+	1. Skipped many useful updates...
+
+	2. Completed ability to update files in the base filesystem by
+	   copying the entire file into the overlay filesystem and then
+	   making the update to the inode in the overlay filesystem.

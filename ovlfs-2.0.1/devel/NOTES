@@ -1,0 +1,238 @@
+File system implementation:
+
+	1. Header file(s) for all filesystem structures:
+
+		#include <linux/fs.h>
+
+	2. register_filesystem(struct file_system_type *) is used to
+	   register the filesystem type.  The "next" argument should be NULL.
+
+		struct file_system_type {
+			struct super_block *(*read_super)(struct super_block *,
+			                                  void *, int);
+			const char *name;
+			int requires_dev;
+			struct file_system_type * next;
+		}
+
+	3. The read_super function is called on a mount() attempt passing a
+	   super_block structure with s_dev and s_flags filled in, a pointer
+	   to a character string containing mount option information, and
+	   a "silent" flag indicating whether errors should be displayed.
+
+		struct super_block {
+			kdev_t s_dev;
+			unsigned long s_blocksize;
+			unsigned char s_blocksize_bits;
+			unsigned char s_lock;
+			unsigned char s_rd_only;
+			unsigned char s_dirt;
+			struct file_system_type *s_type;
+			struct super_operations *s_op;
+			struct dquot_operations *dq_op;
+			unsigned long s_flags;
+			unsigned long s_magic;
+			unsigned long s_time;
+			struct inode * s_covered;
+			struct inode * s_mounted;
+			struct wait_queue * s_wait;
+			union {
+				struct minix_sb_info minix_sb;
+				struct ext_sb_info ext_sb;
+				struct ext2_sb_info ext2_sb;
+				struct hpfs_sb_info hpfs_sb;
+				struct msdos_sb_info msdos_sb;
+				struct isofs_sb_info isofs_sb;
+				struct nfs_sb_info nfs_sb;
+				struct xiafs_sb_info xiafs_sb;
+				struct sysv_sb_info sysv_sb;
+				struct affs_sb_info affs_sb;
+				struct ufs_sb_info ufs_sb;
+				void *generic_sbp;
+			} u;
+		}
+
+	4. After the filesystem's put_inode() operation is called, the inode
+	   may remain in the inode hash tables where __iget() may find it.
+	   Therefore, if there is any reason the inode must not be returned
+	   from the has tables without calling the filesystem's read_inode()
+	   operation, the put_inode() operation should call the clear_inode()
+	   function on the inode.
+
+
+====================
+IMPLEMENTATION NOTES
+====================
+
+	1. The kernel lists are being used to maintain lists of files found
+	   in directories.  Currently these lists are only used to prevent
+	   duplicate file names from being returned by the readdir call.
+	   Due to the use of kernel lists, the kernel list module is needed
+	   in order to use the overlay filesystem.
+
+	2. [Blowing the hash tables] Here is one for the archives...  In order
+	   to use iget() to obtain inodes that have the correct setup for
+	   "wrapper" inodes, a constant inode number was being supplied to iget
+	   which indicated the type of inode required (i.e. regular file,
+	   directory, etc.).  This causes a problem: the iget() function places
+	   the inode into a hash table based on the inode's device number and
+	   the inode number, and the iput() function looks at the hash table,
+	   again based on the inode number and device number.
+
+	   Normally this would not be a problem, but...  The wrap inode
+	   function was changing the inode number of the returned inode to the
+	   inode number of the file it was wrapping.  Therefore, when the
+	   inode was iput(), the inode number was different than when it was
+	   obtained with iget().  Most of the time this would not be a problem,
+	   but, if the inode was the first one in a hash table entry, then
+	   iput() would fail to realize this...  Then, when the has entry
+	   was used again later, it caused a problem.  Eventually, the hash
+	   table lists get crossed and the kernel dies a horrible death...
+
+
+============================
+Sat Sep  6 14:40:22 EDT 1997
+============================
+LEGEND: (N = Note, O = oops, I = idea, Q = question, T = Todo)
+
+	N. Inode numbers must be unique for each file in the overlay file-
+	   system since iget() will return the same inode for the same
+	   inode number and super block.
+
+	O. This issue of inode numbers did not appear to be a problem before
+	   because the iget() failed to find inodes with the same inode
+	   number because it placed the inode in the hash table based on the
+	   constant inode number passed to iget(), and not the inode number
+	   that was assigned to the inode AFTER it returned.
+
+	T. Replace the inode number with a unique scheme; forget about using
+	   the inode numbers from the base and storage filesystems' schemes
+	   since using them would require the set of inode numbers of the
+	   two to be distinct (i.e. disjoint), which is not under the
+	   control of the overlay filesystem.
+
+	Q. How can inode numbers be generated in a manner which guarantees:
+
+		1. the same file will always have the same inode number,
+		2. no two files will have the same inode number, and
+		3. the files can be identified/recognized by inode number.
+
+	I. Track inode numbers in memory in a manner that allows them to
+	   be found by the base or storage filesystems' inode information.
+
+	N. If the ovlfs inodes are mapped from the base and storage file-
+	   systems' inode numbers, then hard links will act the same way in
+	   the overlay filesystem as they do in the base and storage file-
+	   systems.  However, if they are mapped by filename, then the base
+	   filesystem can be changed without affecting the result
+	   (e.g. restoring files in the base fs from a tar backup would not
+	   affect the overlay filesystem).
+
+	N. For the most part, any changes to the base filesystem are going
+	   to cause problems, so the overlay filesystem will assume that
+	   the base filesystem does not change - but it will be programmed
+	   in a manner that will prevent it from blowing up if the base
+	   filesystem does change.
+
+	T. Create a mechanism for storing the inodes for the ovlerlay file-
+	   system.  The following methods are needed:
+
+		1. Add a new inode
+		2. Lookup an inode by inode number (for the read_inode
+		   function)
+		3. Lookup an inode by base filesystem device & inode number
+		4. Lookup an inode by overlay filesystem device & inode number
+
+	T. Create a mechanism to store directory information for overlay
+	   filesystem directories.
+
+	N. In order to allow overlaying of a directory tree, the inode number
+	   alone will not work properly since mount points may be crossed.
+	   Therefore, the device number must be used in addition to the inode
+	   number to identify inodes.
+
+============================
+Wed Sep 10 09:25:19 EDT 1997
+============================
+
+	N. It would be nice if certain useful kernel functions were available
+	   for use.  Such as get_super.  Anyway, let it be noted that I am
+	   making a copy of get_super() in ovl_ino.c.  I hope that later on
+	   I can find a better way of handling this.  Perhaps I will update
+	   the kernel source, add a #define flag to indicate whether or not
+	   to use my own version, and then document what needs to be done to
+	   the kernel source to make it work - or, maybe not ;).
+
+============================
+Wed Sep 10 16:25:45 EDT 1997
+============================
+
+	N. The iput() function does not, by default, remove the inode from
+	   the hash tables.  In order to make certain that an inode is re-read
+	   after put_inode() is used to release it, the clear_inode() function
+	   can be used.  It is important that the inode end up with i_nlink and
+	   i_count set to 0 on return from the put_inode() operation after
+	   clear_inode() is called (which is not a problem since clear_inode()
+	   zeros the entire structure itself).
+
+============================
+Thu Sep 11 11:08:50 EDT 1997
+============================
+
+	N. In order to match multiple links to the same inode in the base
+	   filesystem to the matching inode in the overlay filesystem:
+
+		- when a file is found in the base filesystem that already
+		  exists in storage, and a file of the same name does not
+		  exist in the storage filesystem, determine if there
+		  does exist an inode that:
+
+			1. resides in the overlay filesystem,
+			2. refers to the same storage inode as the file in the
+			   base filesystem.
+
+		- if such an inode exists, create a link to that inode in
+		  the directory in the overlay filesystem that corresponds
+		  to the directory in the base filesystem, and give it the
+		  same name as the file in the base filesystem.
+
+	I. It may be possible to avoid creating the link described above by
+	   simply passing all references to the storage fs inode that already
+	   exists.
+
+	Q. Is it possible for a file to be updated through memory-mapping the
+	   file without going through the filesystem write routine?  If so,
+	   how should bmap() handle this situation?  Actually, is it possible
+	   for bmap to work since the actual block is not on the "device" that
+	   the file resides on?
+
+		- The bmap() function's return value is used to read the
+		  device that the inode belongs to base on the inode's i_dev
+		  member.  Too bad.
+
+	N. It will not be possible to execute programs from the ovlfs file-
+	   system, although the user can bypass this problem by using the
+	   magic and/or magicr directory entries to gain access to the original
+	   inodes.
+
+============================
+Thu Feb 26 11:44:17 EST 1998
+============================
+
+	N. The permission check is based on the check in the 2.0.30 version of
+	   the kernel.  Likewise for the get_super(), lock_inode(), and
+	   wait_on_inode() methods.
+
+	N. The previous notes on program execution are not valid.  These notes
+	   were based on the use of the generic_readpage() method which does not
+	   need to be used by the overlay filesystem itself.
+
+
+============================
+Sun Mar  1 12:59:50 EST 1998
+============================
+
+	N. Only the contents of directories and files should be updated in the
+	   storage by the inode and superblock operations.  All changes to the
+	   inode's attributes should be done through the VFS inode in case the
+	   inode is in use; the storage is updated when the inode is written.

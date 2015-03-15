@@ -1,0 +1,9 @@
+Issues:
+
+	1. When is it possible for a process running in kernel space to be
+	   preempted?
+
+	2. Is it possible for a partially updated inode to be used by
+	   another process?  How can the inode be "locked" without having
+	   to export the static functions in the kernel source, fs/inode.c?
+

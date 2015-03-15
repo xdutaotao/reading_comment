@@ -1,0 +1,43 @@
+Fri Jan 15 14:07:11 EST 1999
+
+1. change all references from the super blocks elements base_to_ovl and
+   stg_to_ovl to u.stg1.base_to_ovl and u.stg1.stg_to_ovl.
+
+2. clarify the following item in the original TODO list:
+
+	33. (entered: Mon May 18 22:47:18 EDT 1998)
+	    Check if the copying of a base filesystem file with one name to a
+	    file of another name, due to multiple links to the same file,
+	    causes the file to show up as a new file in the overlay filesystem.
+
+   This refers to the ovlfs performing the copy of a base file that is modified
+   by a process when the base file has multiple links and the process is
+   working in a directory with a name for the file that is different from the
+   file's inode's reference name.  Also, this problem occurs when no file, or a
+   different file, with that reference name exists in the inode's reference
+   directory.
+
+
+   The answer to this item is that there is a problem.  The code that sets
+   the name and the parent directory inode number for an inode does so as
+   follows in ovl_dir.c, read_into_dir_cb:
+
+	1. If the reference name is not yet set, it is set to the name of the
+	   entry as just found.
+
+	2. The parent directory inode number is set if the inode's reference
+	   information for the currently scanned filesystem (base or storage)
+	   is not yet set.
+
+   Perhaps the parent directory inode number should be set when, and only when
+   the reference name is set.  Or, visa versa.  Otherwise, there would need to
+   be some method of resolving name conflicts.  To make matters worse, the
+   ovlfs currently uses the existing inode with the given name regardless.
+
+3. Make certain that unloading the ovlfs module will unregister all storage
+   methods or will fail if any storage methods are registered.  Otherwise, the
+   storage method(s) would be "locked" and any attempt to remove (i.e.
+   unregister) it (them) would be disastorous.
+
+4. Merge branched changes from 1.0 into 1.1.  Especially the symbolic link
+   bug fix.

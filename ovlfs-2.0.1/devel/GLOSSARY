@@ -1,0 +1,23 @@
+base file system	- Another name for root file system.
+
+base root		- The name of the root directory of the root file
+			  system.
+
+mount point		- The location at which the (virtual) overlay file
+			  system is accessible to the user.  Note that at
+			  current this can NOT be the base file system, but
+			  this may change in the future.
+
+original root		- Another name for base root.
+
+overlay file system	- The name of the (real) filesystem which stores
+			  updates to the root file system (for the virtual file
+			  system) so that the root file system is not actually
+			  affected by any updates.
+
+overlay root		- The name of the root directory of the overlay file
+			  system.
+
+root file system	- The name of the filesystem being overlayed; this is
+			  the "original" or "base" filesystem from which files
+			  are retrieved.

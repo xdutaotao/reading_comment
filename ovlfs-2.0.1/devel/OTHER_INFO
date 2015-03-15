@@ -1,0 +1,10 @@
+Other information needed for structures of the overlay filesystem:
+
+	1. directory entries must remember when they have been unlinked.
+
+	2. inodes must keep a reference name in order to create the inode in
+	   the storage filesystem when it only exists in the storage
+	   filesystem.
+
+	3. inodes need to remember the inodes in the base and storage
+	   filesystems that they refer to.

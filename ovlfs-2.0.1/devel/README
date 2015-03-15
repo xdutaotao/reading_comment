@@ -1,0 +1,68 @@
+This directory contains many useful files in addition to the source files for
+the ovlfs.  Here is a listing of these files and a brief description of their
+contents and/or intended purpose:
+
+	BUGS
+		Bugs found during implementation and testing that have been,
+		or need to be, addressed.
+
+	GLOSSARY
+		Some (attempts at) definitions for terms used throughout the
+		documentation and source code.
+
+	IDEAS
+		Some ideas for implementing the ovlfs as well as a high level
+		plan of implementation.
+
+	INPROGRESS
+		The current status of items that are under development at the
+		current time.
+
+	ISSUES
+		Items of concern for the author that affect the entire concept
+		and implementation of the ovlfs.
+
+	NOTES
+		Miscellaneous notes made during development.  Interesting
+		reading for filesystem developers, especially if they want to
+		laugh at the author ;-).
+
+	OTHER_INFO
+		List of information that the ovlfs needs to maintain that other
+		filesystems do not keep.  This file was created in response to
+		an idea to use an existing filesystem driver as a Storage
+		Method.  The items listed prevent the use of such a filesystem
+		driver as a Storage Method.
+
+	OVL_STG_EXAMPLE.c
+		A skeleton source file, or template, for a new Storage Method.
+
+	QUESTIONS
+		Questions and answers.  This file is immature.
+
+	REQUIREMENTS
+		A list of requirements for implementation.  As of this writing,
+		requirements for the VFS filesystem interface and the Storage
+		Method operations have been documented.
+
+	STATUS
+		Some status items.  Not much here, at least not yet.  Most of
+		the status has been tracked as updates to the TODO file.
+
+	StorageOps
+		A brief analysis of the Storage Method concept.  Used to drive
+		the original design of the Storage Method functionality.
+
+	SUBPROJECTS
+		A list and description of major areas of work that the author
+		is working on or wants to work on.
+
+	TODO
+		List of items discovered during implementation and testing that
+		need to be done.
+
+	TODO.NOW
+		List of items to be done for the currently active development.
+
+	TROUBLE_SHOOTING
+		Notes on problems using the ovlfs and possible solutions.
