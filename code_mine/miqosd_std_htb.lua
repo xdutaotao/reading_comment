@@ -1087,8 +1087,10 @@ function tc_fixed_layer1_prio_root_qdisc_class_filters(dev, flow_id, act, rateli
 
     -- rate limit for guest and xq
     local guest_ratelimit
-    -- 如果guest band <=1, 则认为取的是百分比，否则为绝对值
-    if g_cur_guest_max_band[direction] <= 1 then
+    -- 如果==0,则不限速，如果guest band <=1, 则认为取的是百分比，否则为绝对值
+    if g_cur_guest_max_band[direction] < 0.01 then
+        guest_ratelimit=ratelimit
+    elseif g_cur_guest_max_band[direction] <= 1 then
         guest_ratelimit=math.ceil(ratelimit*g_cur_guest_max_band[direction])
     else
         guest_ratelimit=math.ceil(g_cur_guest_max_band[direction])
@@ -1149,7 +1151,9 @@ function tc_fixed_layer1_htb_root_qdisc_class_filters(dev, flow_id, act, ratelim
         -- 对于guest，取配置的值
         if _name == 'guest' then
             local lceil_guest = 0
-            if g_cur_guest_max_band[direction] <= 1 then
+            if g_cur_guest_max_band[direction] < 0.01 then
+                lceil_guest = ratelimit
+            elseif g_cur_guest_max_band[direction] <= 1 then
                 lceil_guest = math.ceil(ratelimit*g_cur_guest_max_band[direction])
             else
                 lceil_guest = math.ceil(g_cur_guest_max_band[direction])
@@ -1913,8 +1917,6 @@ function update_qos_enabled(qos_on_flag)
 end
 
 function update_guest_percent(in_up,in_down,todisk)
-    if in_up == 0 then in_up = g_guest_default_band_factor end
-    if in_down == 0 then in_down= g_guest_default_band_factor end
 
     g_cursor:set('miqos','guest','up_per',in_up)
     g_cursor:set('miqos','guest','down_per',in_down)
@@ -1925,9 +1927,10 @@ end
 
 function get_guest_percent()
     local up,down
-    up = g_cursor:get('miqos','guest','up_per') or g_guest_default_band
-    down = g_cursor:get('miqos','guest','down_per') or g_guest_default_band
-    return tonumber(up),tonumber(down)
+    up = tonumber(g_cursor:get('miqos','guest','up_per') or g_guest_default_band)
+    down = tonumber(g_cursor:get('miqos','guest','down_per') or g_guest_default_band)
+
+    return up,down
 end
 
 function get_bw()
@@ -1965,7 +1968,7 @@ function main_loop()
         if now_time >= next_qos_time then
             if update_QOS() then
                 gc_timer = gc_timer + 1
-                if gc_timer >= 30 then
+                if gc_timer >= 180 then
                     gc_timer = 0
                     local tmp_cnt = collectgarbage('count')
                     logger(3, "current mode:: --> " .. g_QOS_Status .. ',QoS-Mode:' .. QOS_TYPE .. ', LUA GC counter: ' .. tmp_cnt .. ', Bandwidth: U:'..tc_bandwidth[UP]..'kbps,D:'..tc_bandwidth[DOWN]..'kbps')
@@ -2086,7 +2089,19 @@ function main_loop()
                             else
                                 v:send(json.encode({status=2,data='parameter wrong.'}))
                             end
+                        elseif args[1] == 'show_guest' then
+                            local guest_data={UP=0,DOWN=0};
+                            for k, v in pairs(guest_data) do
+                                if g_cur_guest_max_band[k] < 0.01 then
+                                    guest_data[k] = 0
+                                elseif g_cur_guest_max_band[k] <=1 then
+                                    guest_data[k] = math.ceil(g_cur_guest_max_band[k] * cfg_bandwidth[k])
+                                else
+                                    guest_data[k] = math.ceil(g_cur_guest_max_band[k])
+                                end
+                            end
 
+                            v:send(json.encode({status=0,data=guest_data}))
                         else
 
                             if cur_qos_enabled == '0' then
