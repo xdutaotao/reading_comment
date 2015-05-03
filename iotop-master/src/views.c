@@ -35,6 +35,7 @@ int chainlen(struct xxxid_stats *chain)
     return i;
 }
 
+/* 计算本次和上一次的diff，可以得出这段间隔的IO速率*/
 struct xxxid_stats *create_diff(struct xxxid_stats *cs, struct xxxid_stats *ps, int *len)
 {
     int diff_size = sizeof(struct xxxid_stats) * chainlen(cs);
@@ -144,6 +145,7 @@ void humanize_val(double *value, char **str)
     *str = config.f.accumulated ? prefix_acc[p] : prefix[p];
 }
 
+/* 仅仅显示 */
 void view_batch(struct xxxid_stats *cs, struct xxxid_stats *ps)
 {
     int diff_len = 0;
@@ -188,7 +190,7 @@ void view_batch(struct xxxid_stats *cs, struct xxxid_stats *ps)
 
     for (s = diff; s; s = s->__next)
     {
-        struct passwd *pwd = getpwuid(s->euid);
+        //struct passwd *pwd = getpwuid(s->euid);
 
         double read_val = s->read_val;
         double write_val = s->write_val;
@@ -214,7 +216,8 @@ void view_batch(struct xxxid_stats *cs, struct xxxid_stats *ps)
         printf("%5i %4s %-10.10s %7.2f %-3.3s %7.2f %-3.3s %2.2f %% %2.2f %% %s\n",
                s->tid,
                str_ioprio(s->io_prio),
-               pwd ? pwd->pw_name : "UNKNOWN",
+               /* pwd ? pwd->pw_name : "UNKNOWN", */
+               '-',
                read_val,
                read_str,
                write_val,

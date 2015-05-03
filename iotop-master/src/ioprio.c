@@ -24,6 +24,7 @@ enum {
 
 const char *str_ioprio_class[] = { "-", "rt", "be", "id" };
 
+/* 调用 ioprio_get 系统调用 */
 inline int get_ioprio(pid_t pid)
 {
     return syscall(SYS_ioprio_get, IOPRIO_WHO_PROCESS, pid);

@@ -80,6 +80,7 @@ int send_cmd(int sock_fd, __u16 nlmsg_type, __u32 nlmsg_pid,
     return 0;
 }
 
+/* 从kernel中读取taskstats的netlink family-id来通信 */
 int get_family_id(int sock_fd)
 {
     static char name[256];
@@ -114,10 +115,11 @@ int get_family_id(int sock_fd)
     return id;
 }
 
+/* netlink 初始化 */
 void nl_init(void)
 {
     struct sockaddr_nl addr;
-    int sock_fd = socket(PF_NETLINK, SOCK_RAW, NETLINK_GENERIC);
+    int sock_fd = socket(PF_NETLINK, SOCK_RAW, NETLINK_GENERIC);    /* 创建netlink句柄 */
 
     if (sock_fd < 0)
         goto error;
@@ -129,7 +131,13 @@ void nl_init(void)
         goto error;
 
     nl_sock = sock_fd;
-    nl_fam_id = get_family_id(sock_fd);
+    nl_fam_id = get_family_id(sock_fd); /* 获取taskstats通信netlink的familyid，这里如果内核并没有打开taskstats功能，会返回0 */
+
+    /* 增加 == 0 处理 */
+    if(nl_fam_id == 0){
+        fprintf(stderr, "it seems kernel not support taskstats feature.");
+        goto error;
+    }
 
     return;
 
@@ -141,6 +149,7 @@ error:
     exit(EXIT_FAILURE);
 }
 
+/* 获取对应pid的stats信息*/
 int nl_xxxid_info(pid_t xxxid, int isp, struct xxxid_stats *stats)
 {
     if (nl_sock < 0)
@@ -159,8 +168,9 @@ int nl_xxxid_info(pid_t xxxid, int isp, struct xxxid_stats *stats)
     stats->tid = xxxid;
 
     struct msgtemplate msg;
-    int rv = recv(nl_sock, &msg, sizeof(msg), 0);
+    int rv = recv(nl_sock, &msg, sizeof(msg), 0);   /* 读取到内核netlink返回msg */
 
+    /* 验证netlink msg 是否OK */
     if (msg.n.nlmsg_type == NLMSG_ERROR ||
             !NLMSG_OK((&msg.n), rv))
     {
@@ -169,8 +179,10 @@ int nl_xxxid_info(pid_t xxxid, int isp, struct xxxid_stats *stats)
         return -1;
     }
 
+    /* 读取genl msg的payload消息长度 */
     rv = GENLMSG_PAYLOAD(&msg.n);
 
+    /* netlink attribute */
     struct nlattr *na = (struct nlattr *) GENLMSG_DATA(&msg);
     int len = 0;
 
@@ -181,15 +193,15 @@ int nl_xxxid_info(pid_t xxxid, int isp, struct xxxid_stats *stats)
         if (na->nla_type == TASKSTATS_TYPE_AGGR_TGID
                 || na->nla_type == TASKSTATS_TYPE_AGGR_PID)
         {
-            int aggr_len = NLA_PAYLOAD(na->nla_len);
+            int aggr_len = NLA_PAYLOAD(na->nla_len);    /* 获取长度 */
             int len2 = 0;
 
-            na = (struct nlattr *) NLA_DATA(na);
+            na = (struct nlattr *) NLA_DATA(na);    /* 获取实体 */
             while (len2 < aggr_len)
             {
-                if (na->nla_type == TASKSTATS_TYPE_STATS)
+                if (na->nla_type == TASKSTATS_TYPE_STATS)   /* 类型为Taskstat */
                 {
-                    struct taskstats *ts = NLA_DATA(na);
+                    struct taskstats *ts = NLA_DATA(na); /* 取出数据 */
 #define COPY(field) { stats->field = ts->field; }
                     COPY(read_bytes);
                     COPY(write_bytes);
@@ -198,7 +210,7 @@ int nl_xxxid_info(pid_t xxxid, int isp, struct xxxid_stats *stats)
 #undef COPY
                     stats->euid = ts->ac_uid;
                 }
-                len2 += NLA_ALIGN(na->nla_len);
+                len2 += NLA_ALIGN(na->nla_len);     /* 后移,当然，应该是无用的，因为只会传1个上来 */
                 na = (struct nlattr *) ((char *) na + len2);
             }
         }
@@ -210,12 +222,14 @@ int nl_xxxid_info(pid_t xxxid, int isp, struct xxxid_stats *stats)
     return 0;
 }
 
+/* 清理netlink */
 void nl_term(void)
 {
     if (nl_sock > -1)
         close(nl_sock);
 }
 
+/* 导出 for debug */
 void dump_xxxid_stats(struct xxxid_stats *stats)
 {
     printf("%i %i SWAPIN: %lu IO: %lu "
@@ -228,6 +242,7 @@ void dump_xxxid_stats(struct xxxid_stats *stats)
            stats->cmdline);
 }
 
+
 void free_stats(struct xxxid_stats *s)
 {
     if (s->cmdline)
@@ -236,6 +251,7 @@ void free_stats(struct xxxid_stats *s)
     free(s);
 }
 
+/* 释放stats chain */
 void free_stats_chain(struct xxxid_stats *chain)
 {
     while (chain)
@@ -247,6 +263,7 @@ void free_stats_chain(struct xxxid_stats *chain)
     }
 }
 
+/* 构建pid的taskstats的结构 */
 struct xxxid_stats *make_stats(int pid, int processes)
 {
     struct xxxid_stats *s = malloc(sizeof(struct xxxid_stats));
@@ -258,7 +275,7 @@ struct xxxid_stats *make_stats(int pid, int processes)
     const static char unknown[] = "<unknown>";
     const char *cmdline = read_cmdline2(pid);
 
-    s->cmdline = strdup(cmdline ? cmdline : unknown);
+    s->cmdline = strdup(cmdline ? cmdline : unknown);   /* 获取cmd */
 
     return s;
 

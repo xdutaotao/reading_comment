@@ -21,9 +21,11 @@ const char *xprintf(const char *format, ...)
     return ((j >= 0) && (j < BUFSIZ)) ? buf : NULL;
 }
 
+/* 读取pid对应命令行 */
 const char *read_cmdline2(int pid)
 {
     static char buf[BUFSIZ];
+    /* 一般用户态进程的commandline在/proc/x/cmdline */
     FILE *fp = fopen(xprintf("/proc/%d/cmdline", pid), "rb");
     char *rv = NULL;
 
@@ -44,6 +46,7 @@ const char *read_cmdline2(int pid)
     if (rv)
         return rv;
 
+    /* 如果/proc/x/cmdline 没有，那么就会存在于 /proc/x/status 中 */
     fp = fopen(xprintf("/proc/%d/status", pid), "rb");
 
     memset(buf, 0, BUFSIZ);
@@ -65,27 +68,29 @@ const char *read_cmdline2(int pid)
     return rv;
 }
 
+/* 读取目录下的pid */
 static int __next_pid(DIR *dir)
 {
     while (1)
     {
-        struct dirent *de = readdir(dir);
+        struct dirent *de = readdir(dir);   /* readdir 会移动到下一个dir */
 
         if (!de)
             return 0;
 
         char *eol = NULL;
-        int pid = strtol(de->d_name, &eol, 10);
+        int pid = strtol(de->d_name, &eol, 10); /* 将目录名转换为pid数字,10进制 */
 
-        if (*eol != '\0')
+        if (*eol != '\0')   /* 说明dent名字不全为数字，认为是无效的，继续读取下一个目录*/
             continue;
 
-        return pid;
+        return pid; /* 读取成功 */
     }
 
     return 0;
 }
 
+/* 打开目录 */
 struct pidgen *openpidgen(int flags)
 {
     struct pidgen *pg = malloc(sizeof(struct pidgen));
@@ -93,14 +98,14 @@ struct pidgen *openpidgen(int flags)
     if (!pg)
         return NULL;
 
-    if ((pg->__proc = opendir("/proc")))
+    if ((pg->__proc = opendir("/proc")))    /* 打开 /proc 目录 */
     {
         pg->__task = NULL;
         pg->__flags = flags;
         return pg;
     }
 
-    free(pg);
+    free(pg);   /* 打开失败，则释放 */
     return NULL;
 }
 
